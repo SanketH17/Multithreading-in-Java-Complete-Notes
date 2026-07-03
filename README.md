@@ -6,6 +6,7 @@
 
 1. [Introduction to Multithreading](#1-introduction-to-multithreading)
 2. [Difference Between Process vs Thread](#2-difference-between-process-and-thread)
+3. [Thread Life Cycle in Java](#3-thread-life-cycle-in-java)
 
 ---
 
@@ -369,7 +370,153 @@ That is why we use synchronization mechanisms such as:
 
 ## 3. Thread Life Cycle in Java
 
-### 🤔 Before We Begin — A Simple Analogy
+### 🛠️ Two Ways to Create Threads in Java
+
+Before seeing a full example, let's quickly cover the two ways to create threads. Both approaches are valid — choose whichever fits your need.
+
+---
+
+#### Way 1 — Extending the `Thread` class
+
+**Steps:**
+
+1. Create a class that **extends** the `Thread` class (from `java.lang` package).
+2. **Override** the `run()` method — this is where you write the task.
+3. Create an **object** of your class.
+4. Call the `start()` method to begin execution.
+
+```java
+// Step 1: Extend the Thread class
+class MyThread extends Thread {
+
+    // Step 2: Override the run() method
+    @Override
+    public void run() {
+        for (int i = 1; i <= 5; i++) {
+            System.out.println("Thread running: " + i);
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+
+        // Step 3: Create an object of the class
+        MyThread t1 = new MyThread();
+
+        // Step 4: Start the thread
+        t1.start();    // ✅ Thread moves from NEW → RUNNABLE → RUNNING
+
+        // t1.start(); // ❌ Calling start() again throws IllegalThreadStateException!
+    }
+}
+```
+
+---
+
+#### Way 2 — Implementing the `Runnable` interface
+
+**Steps:**
+
+1. Create a class that **implements** the `Runnable` interface.
+2. **Override** the `run()` method.
+3. Create a `Thread` object and pass your `Runnable` class to it.
+4. Call the `start()` method.
+
+```java
+// Step 1: Implement the Runnable interface
+class MyTask implements Runnable {
+
+    // Step 2: Override the run() method
+    @Override
+    public void run() {
+        for (int i = 1; i <= 5; i++) {
+            System.out.println("Task running: " + i);
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+
+        // Step 3: Create a Runnable object and wrap it in a Thread
+        MyTask task = new MyTask();
+        Thread t1 = new Thread(task);
+
+        // Step 4: Start the thread
+        t1.start();
+    }
+}
+```
+
+> **Which one should you use?** In most cases, **implementing `Runnable`** is preferred because Java supports only single inheritance. If you extend `Thread`, your class cannot extend any other class. With `Runnable`, you keep that option open.
+
+---
+
+### 🧪 Full Example — Seeing the Life Cycle in Action
+
+This example demonstrates a thread going through multiple states:
+
+```java
+public class LifeCycleDemo {
+    public static void main(String[] args) throws InterruptedException {
+
+        Thread t = new Thread(() -> {
+            System.out.println("▶ State inside run(): " + Thread.currentThread().getState());
+            // Currently RUNNING
+
+            try {
+                Thread.sleep(1500);  // Moves to TIMED_WAITING for 1.5 seconds
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            System.out.println("▶ After sleep: " + Thread.currentThread().getState());
+            // Back to RUNNING after waking up
+        });
+
+        // 1. NEW state
+        System.out.println("1. After creation: " + t.getState());     // NEW
+
+        // 2. Start the thread → RUNNABLE
+        t.start();
+        System.out.println("2. After start(): " + t.getState());      // RUNNABLE
+
+        // 3. Give it a moment to enter sleep → TIMED_WAITING
+        Thread.sleep(500);
+        System.out.println("3. During sleep: " + t.getState());       // TIMED_WAITING
+
+        // 4. Wait for the thread to finish
+        t.join();
+        System.out.println("4. After completion: " + t.getState());   // TERMINATED
+    }
+}
+```
+
+**Expected output (order may vary slightly):**
+
+```text
+1. After creation: NEW
+2. After start(): RUNNABLE
+▶ State inside run(): RUNNABLE
+3. During sleep: TIMED_WAITING
+▶ After sleep: RUNNABLE
+4. After completion: TERMINATED
+```
+
+---
+
+### ⚠️ Common Mistakes to Avoid
+
+| Mistake | What happens | Correct approach |
+|---|---|---|
+| Calling `run()` instead of `start()` | The code runs on the **current** thread, not a new one. No new thread is created. | Always call `start()` to create a new thread. |
+| Calling `start()` twice on the same thread | Throws `IllegalThreadStateException` | Create a **new** thread object if you need to run the task again. |
+| Assuming `start()` means immediate execution | The thread goes to **Runnable**, not Running. The scheduler decides when it actually runs. | Don't depend on exact execution order between threads. |
+
+---
+
+### 🤔 Thread Life Cycle => Before We Begin — A Simple Analogy
 
 The easiest way to understand the thread life cycle is to **think of a thread as a person**.
 
@@ -635,152 +782,6 @@ t.start();
                  │         │       (cannot restart)            │
                  └─────────┴──────────────────────────────────┘
 ```
-
----
-
-### 🛠️ Two Ways to Create Threads in Java
-
-Before seeing a full example, let's quickly cover the two ways to create threads. Both approaches are valid — choose whichever fits your need.
-
----
-
-#### Way 1 — Extending the `Thread` class
-
-**Steps:**
-
-1. Create a class that **extends** the `Thread` class (from `java.lang` package).
-2. **Override** the `run()` method — this is where you write the task.
-3. Create an **object** of your class.
-4. Call the `start()` method to begin execution.
-
-```java
-// Step 1: Extend the Thread class
-class MyThread extends Thread {
-
-    // Step 2: Override the run() method
-    @Override
-    public void run() {
-        for (int i = 1; i <= 5; i++) {
-            System.out.println("Thread running: " + i);
-        }
-    }
-}
-
-public class Main {
-    public static void main(String[] args) {
-
-        // Step 3: Create an object of the class
-        MyThread t1 = new MyThread();
-
-        // Step 4: Start the thread
-        t1.start();    // ✅ Thread moves from NEW → RUNNABLE → RUNNING
-
-        // t1.start(); // ❌ Calling start() again throws IllegalThreadStateException!
-    }
-}
-```
-
----
-
-#### Way 2 — Implementing the `Runnable` interface
-
-**Steps:**
-
-1. Create a class that **implements** the `Runnable` interface.
-2. **Override** the `run()` method.
-3. Create a `Thread` object and pass your `Runnable` class to it.
-4. Call the `start()` method.
-
-```java
-// Step 1: Implement the Runnable interface
-class MyTask implements Runnable {
-
-    // Step 2: Override the run() method
-    @Override
-    public void run() {
-        for (int i = 1; i <= 5; i++) {
-            System.out.println("Task running: " + i);
-        }
-    }
-}
-
-public class Main {
-    public static void main(String[] args) {
-
-        // Step 3: Create a Runnable object and wrap it in a Thread
-        MyTask task = new MyTask();
-        Thread t1 = new Thread(task);
-
-        // Step 4: Start the thread
-        t1.start();
-    }
-}
-```
-
-> **Which one should you use?** In most cases, **implementing `Runnable`** is preferred because Java supports only single inheritance. If you extend `Thread`, your class cannot extend any other class. With `Runnable`, you keep that option open.
-
----
-
-### 🧪 Full Example — Seeing the Life Cycle in Action
-
-This example demonstrates a thread going through multiple states:
-
-```java
-public class LifeCycleDemo {
-    public static void main(String[] args) throws InterruptedException {
-
-        Thread t = new Thread(() -> {
-            System.out.println("▶ State inside run(): " + Thread.currentThread().getState());
-            // Currently RUNNING
-
-            try {
-                Thread.sleep(1500);  // Moves to TIMED_WAITING for 1.5 seconds
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            System.out.println("▶ After sleep: " + Thread.currentThread().getState());
-            // Back to RUNNING after waking up
-        });
-
-        // 1. NEW state
-        System.out.println("1. After creation: " + t.getState());     // NEW
-
-        // 2. Start the thread → RUNNABLE
-        t.start();
-        System.out.println("2. After start(): " + t.getState());      // RUNNABLE
-
-        // 3. Give it a moment to enter sleep → TIMED_WAITING
-        Thread.sleep(500);
-        System.out.println("3. During sleep: " + t.getState());       // TIMED_WAITING
-
-        // 4. Wait for the thread to finish
-        t.join();
-        System.out.println("4. After completion: " + t.getState());   // TERMINATED
-    }
-}
-```
-
-**Expected output (order may vary slightly):**
-
-```text
-1. After creation: NEW
-2. After start(): RUNNABLE
-▶ State inside run(): RUNNABLE
-3. During sleep: TIMED_WAITING
-▶ After sleep: RUNNABLE
-4. After completion: TERMINATED
-```
-
----
-
-### ⚠️ Common Mistakes to Avoid
-
-| Mistake | What happens | Correct approach |
-|---|---|---|
-| Calling `run()` instead of `start()` | The code runs on the **current** thread, not a new one. No new thread is created. | Always call `start()` to create a new thread. |
-| Calling `start()` twice on the same thread | Throws `IllegalThreadStateException` | Create a **new** thread object if you need to run the task again. |
-| Assuming `start()` means immediate execution | The thread goes to **Runnable**, not Running. The scheduler decides when it actually runs. | Don't depend on exact execution order between threads. |
 
 ---
 
