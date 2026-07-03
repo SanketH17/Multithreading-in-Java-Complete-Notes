@@ -2,6 +2,13 @@
 
 ---
 
+## 📑 Index
+
+1. [Introduction to Multithreading](#1-introduction-to-multithreading)
+2. [Difference Between Process vs Thread](#2-difference-between-process-and-thread)
+
+---
+
 ## 1. Introduction to Multithreading
 
 ### 🤔 Before We Begin — What Problem Are We Solving?
