@@ -504,6 +504,28 @@ public class LifeCycleDemo {
 4. After completion: TERMINATED
 ```
 
+## 🔢 Step-by-Step Breakdown
+
+| Step | Code | What Happens | State |
+|---|---|---|---|
+| **1. Create thread** | `new Thread(...)` | Thread object is created in memory, but **not yet started** | `NEW` |
+| **2. Start thread** | `t.start()` | JVM registers the thread as ready. **Both main and `t` run side by side** from here | `RUNNABLE` |
+| **3. Thread sleeps** | `Thread.sleep(1500)` inside `t` | Thread `t` pauses for a fixed time. Main wakes up at 500ms and checks — `t` is still sleeping | `TIMED_WAITING` |
+| **4. Main joins** | `t.join()` | Main **blocks** and waits for `t` to finish. Once `t`'s `run()` completes, main resumes | `TERMINATED` |
+
+---
+
+## 📤 Final Output
+
+```text
+1. After creation:   NEW
+2. After start():    RUNNABLE
+▶ State inside run(): RUNNABLE
+3. During sleep:     TIMED_WAITING
+▶ After sleep:       RUNNABLE
+4. After completion: TERMINATED
+```
+
 ---
 
 ### ⚠️ Common Mistakes to Avoid
