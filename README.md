@@ -366,3 +366,439 @@ That is why we use synchronization mechanisms such as:
 > A **process** is a running program with its own resources, while a **thread** is a lightweight worker inside a process that shares the process resources.
 
 ---
+
+## 3. Thread Life Cycle in Java
+
+### 🤔 Before We Begin — A Simple Analogy
+
+The easiest way to understand the thread life cycle is to **think of a thread as a person**.
+
+| Stage | Person Analogy | Thread Equivalent |
+|---|---|---|
+| Person is **born** | `Person p = new Person();` | Thread object is **created** → `New` state |
+| Person is **ready to work** | Person walks to the office and waits for a task | `start()` is called → `Runnable` state |
+| Person **starts working** | Person is selected and given a task | CPU picks the thread → `Running` state |
+| Person takes a **break / sleeps** | Person goes to rest or waits for someone | Thread is waiting → `Waiting` / `Timed Waiting` state |
+| Person **finishes all tasks** | Person retires / goes home | Thread completes → `Terminated` (Dead) state |
+
+```text
+                        Assume Person is Thread
+
+  Stage 1              Stage 2              Stage 3              Stage 4
+  Person is born       Person is in         Person is in         Dead state
+  Person p =           Runnable state       Running state        (Task completed)
+  new Person();
+
+   👶 ──p.start()──▶ 🙋 ──selected──▶ 💻 ──task done──▶ 💀
+                      │       ▲              │       ▲
+                      │       │              │       │
+                      ▼       │              ▼       │
+                     😴 Stage 5: Non-Runnable State  │
+                     (Waiting / Sleeping)             │
+                      │                               │
+                      └──── wakes up / notified ──────┘
+```
+
+---
+
+### 🔄 The Thread Life Cycle — Overview
+
+Every thread in Java goes through a series of states from the moment it is created to the moment it finishes. These states together form the **thread life cycle**.
+
+```text
+Thread Life Cycle States:
+
+  ┌────────────┐    start()    ┌────────────┐   CPU selects   ┌────────────┐
+  │            │──────────────▶│            │───────────────▶│            │
+  │    NEW     │               │  RUNNABLE  │                │  RUNNING   │
+  │            │               │ (Ready to  │◀───────────────│            │
+  └────────────┘               │   run)     │   CPU switches  └─────┬──────┘
+                               └─────┬──────┘   to another          │
+                                     ▲          thread              │
+                                     │                              │
+                                     │                         ┌────▼──────┐
+                                     │                         │ run()     │
+                                     │                         │ method    │
+                                     │                         │ finishes  │
+                               ┌─────┴──────┐                 ▼           │
+                               │  WAITING / │          ┌────────────┐     │
+                               │   TIMED    │◀─────────│            │     │
+                               │  WAITING   │ sleep()  │            │     │
+                               │            │ wait()   │            │     │
+                               └────────────┘ join()   │ TERMINATED │◀────┘
+                                                       │   (DEAD)   │
+                                                       └────────────┘
+```
+
+---
+
+### 📝 All Thread States Explained
+
+Let's go through each state one by one.
+
+---
+
+#### 1️⃣ New (Born) State
+
+When you create a thread object but have **not yet called `start()`**, the thread is in the **New** state.
+
+> The thread exists in memory, but it has not started running. Think of it like a newborn baby — alive but not yet doing any work.
+
+```java
+// Thread is created but NOT started yet — it is in the "New" state
+Thread t = new Thread();
+// At this point, t is in the NEW state
+```
+
+**Key points:**
+
+- The thread object has been created using `new`.
+- The `start()` method has **not** been called yet.
+- The thread is **not alive** at this point (`t.isAlive()` returns `false`).
+
+---
+
+#### 2️⃣ Runnable (Ready) State
+
+When you call `start()` on a thread, it moves to the **Runnable** state. This means the thread is **ready to run** and is waiting for the CPU to pick it up.
+
+> Think of a person standing in a queue at the office, ready to work. They're not working yet — they're just waiting for their turn.
+
+```java
+Thread t = new Thread(() -> {
+    System.out.println("Thread is running!");
+});
+
+t.start();  // Thread moves from NEW → RUNNABLE
+// Now it is waiting for the CPU to schedule it
+```
+
+**Key points:**
+
+- The thread is ready to run but may not be running yet.
+- The **thread scheduler** (part of the JVM/OS) decides when to actually run it.
+- Multiple threads can be in the Runnable state at the same time, all waiting for CPU time.
+
+---
+
+#### 3️⃣ Running State
+
+When the **thread scheduler** picks a thread from the Runnable pool and the CPU starts executing its `run()` method, the thread is in the **Running** state.
+
+> The person has been called to their desk and is now actively working on a task.
+
+```java
+Thread t = new Thread(() -> {
+    // This code executes when the thread is in the RUNNING state
+    System.out.println("I am running on: " + Thread.currentThread().getName());
+});
+
+t.start();
+```
+
+**Key points:**
+
+- This is the state where the thread's `run()` method is actually executing.
+- The CPU is actively processing this thread's instructions.
+- A running thread can move to other states:
+  - Back to **Runnable** → if the CPU switches to another thread (context switching).
+  - To **Waiting / Timed Waiting** → if it calls `sleep()`, `wait()`, or `join()`.
+  - To **Terminated** → if `run()` finishes or an exception occurs.
+
+---
+
+#### 4️⃣ Waiting (Blocked / Non-Runnable) State
+
+A thread enters the **Waiting** state when it is waiting **indefinitely** for another thread to perform a specific action (like calling `notify()` or `notifyAll()`).
+
+> The person stops working and waits for someone else to give them a signal before they can continue.
+
+```java
+// Example: Thread waits until another thread calls notify()
+synchronized (lockObject) {
+    lockObject.wait();  // Thread goes to WAITING state
+    // It will stay here until another thread calls lockObject.notify()
+}
+```
+
+**Key points:**
+
+- The thread is **alive** but **not running**.
+- It does not consume CPU time while waiting.
+- It will only move back to Runnable when:
+  - Another thread calls `notify()` or `notifyAll()` on the same object.
+  - Another thread that it is `join()`-ing finishes.
+
+**Common methods that cause Waiting state:**
+
+| Method | What it does |
+|---|---|
+| `object.wait()` | Waits until another thread calls `notify()` on the same object |
+| `thread.join()` | Waits until the specified thread finishes execution |
+| `LockSupport.park()` | Waits until it is unparked |
+
+---
+
+#### 5️⃣ Timed Waiting State
+
+Similar to the Waiting state, but the thread waits only for a **specific amount of time**. After the time expires, it automatically goes back to the Runnable state.
+
+> The person takes a short nap and sets an alarm. When the alarm rings, they wake up and get back to work.
+
+```java
+// Example 1: Thread sleeps for 2 seconds
+Thread t = new Thread(() -> {
+    System.out.println("Going to sleep...");
+    try {
+        Thread.sleep(2000);  // Thread goes to TIMED WAITING for 2 seconds
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+    System.out.println("Woke up!");
+});
+
+t.start();
+```
+
+```java
+// Example 2: Thread waits with a timeout
+synchronized (lockObject) {
+    lockObject.wait(3000);  // Wait for at most 3 seconds
+}
+```
+
+**Key points:**
+
+- The thread pauses for a fixed duration and then automatically becomes Runnable again.
+- It does **not** need another thread to wake it up (though it can be interrupted early).
+
+**Common methods that cause Timed Waiting state:**
+
+| Method | What it does |
+|---|---|
+| `Thread.sleep(millis)` | Sleeps for the given time |
+| `object.wait(millis)` | Waits for notify or until time expires |
+| `thread.join(millis)` | Waits for the thread to finish or until time expires |
+| `LockSupport.parkNanos()` | Parks for a specific duration |
+
+---
+
+#### 6️⃣ Terminated (Dead) State
+
+A thread enters the **Terminated** state when its `run()` method finishes execution, either normally or because of an unhandled exception.
+
+> The person has completed all their tasks and goes home. They cannot come back to work again.
+
+```java
+Thread t = new Thread(() -> {
+    System.out.println("Doing my work...");
+    // run() method finishes here
+});
+
+t.start();
+
+// After run() completes, the thread is in the TERMINATED state
+// t.start();  // ❌ This will throw IllegalThreadStateException!
+```
+
+**Key points:**
+
+- The thread has **finished** its work.
+- It **cannot be restarted**. Calling `start()` again on a terminated thread throws `IllegalThreadStateException`.
+- `t.isAlive()` returns `false` for a terminated thread.
+
+> ⚠️ **Important:** Once a thread is dead, it is dead forever. You **cannot** call `start()` on it again. If you need the same task to run again, you must create a **new** thread object.
+
+---
+
+### 🔀 State Transitions at a Glance
+
+```text
+                     ┌──────────────────────────────────────────┐
+                     │          THREAD STATE TRANSITIONS        │
+                     └──────────────────────────────────────────┘
+
+  NEW ──── start() ────▶ RUNNABLE ◀──────────────────────────┐
+                            │                                 │
+                            │ (CPU scheduler picks thread)    │
+                            ▼                                 │
+                         RUNNING ─────────────────────────────┤
+                            │                                 │
+                 ┌──────────┼──────────┐                      │
+                 │          │          │                       │
+            sleep(ms)    wait()    run() ends           (time expires
+            wait(ms)     join()        │                 or notify()
+            join(ms)       │           │                 or thread
+                 │         │           │                 completes)
+                 ▼         ▼           ▼                      │
+          TIMED WAITING  WAITING   TERMINATED                 │
+                 │         │       (cannot restart)            │
+                 └─────────┴──────────────────────────────────┘
+```
+
+---
+
+### 🛠️ Two Ways to Create Threads in Java
+
+Before seeing a full example, let's quickly cover the two ways to create threads. Both approaches are valid — choose whichever fits your need.
+
+---
+
+#### Way 1 — Extending the `Thread` class
+
+**Steps:**
+
+1. Create a class that **extends** the `Thread` class (from `java.lang` package).
+2. **Override** the `run()` method — this is where you write the task.
+3. Create an **object** of your class.
+4. Call the `start()` method to begin execution.
+
+```java
+// Step 1: Extend the Thread class
+class MyThread extends Thread {
+
+    // Step 2: Override the run() method
+    @Override
+    public void run() {
+        for (int i = 1; i <= 5; i++) {
+            System.out.println("Thread running: " + i);
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+
+        // Step 3: Create an object of the class
+        MyThread t1 = new MyThread();
+
+        // Step 4: Start the thread
+        t1.start();    // ✅ Thread moves from NEW → RUNNABLE → RUNNING
+
+        // t1.start(); // ❌ Calling start() again throws IllegalThreadStateException!
+    }
+}
+```
+
+---
+
+#### Way 2 — Implementing the `Runnable` interface
+
+**Steps:**
+
+1. Create a class that **implements** the `Runnable` interface.
+2. **Override** the `run()` method.
+3. Create a `Thread` object and pass your `Runnable` class to it.
+4. Call the `start()` method.
+
+```java
+// Step 1: Implement the Runnable interface
+class MyTask implements Runnable {
+
+    // Step 2: Override the run() method
+    @Override
+    public void run() {
+        for (int i = 1; i <= 5; i++) {
+            System.out.println("Task running: " + i);
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+
+        // Step 3: Create a Runnable object and wrap it in a Thread
+        MyTask task = new MyTask();
+        Thread t1 = new Thread(task);
+
+        // Step 4: Start the thread
+        t1.start();
+    }
+}
+```
+
+> **Which one should you use?** In most cases, **implementing `Runnable`** is preferred because Java supports only single inheritance. If you extend `Thread`, your class cannot extend any other class. With `Runnable`, you keep that option open.
+
+---
+
+### 🧪 Full Example — Seeing the Life Cycle in Action
+
+This example demonstrates a thread going through multiple states:
+
+```java
+public class LifeCycleDemo {
+    public static void main(String[] args) throws InterruptedException {
+
+        Thread t = new Thread(() -> {
+            System.out.println("▶ State inside run(): " + Thread.currentThread().getState());
+            // Currently RUNNING
+
+            try {
+                Thread.sleep(1500);  // Moves to TIMED_WAITING for 1.5 seconds
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            System.out.println("▶ After sleep: " + Thread.currentThread().getState());
+            // Back to RUNNING after waking up
+        });
+
+        // 1. NEW state
+        System.out.println("1. After creation: " + t.getState());     // NEW
+
+        // 2. Start the thread → RUNNABLE
+        t.start();
+        System.out.println("2. After start(): " + t.getState());      // RUNNABLE
+
+        // 3. Give it a moment to enter sleep → TIMED_WAITING
+        Thread.sleep(500);
+        System.out.println("3. During sleep: " + t.getState());       // TIMED_WAITING
+
+        // 4. Wait for the thread to finish
+        t.join();
+        System.out.println("4. After completion: " + t.getState());   // TERMINATED
+    }
+}
+```
+
+**Expected output (order may vary slightly):**
+
+```text
+1. After creation: NEW
+2. After start(): RUNNABLE
+▶ State inside run(): RUNNABLE
+3. During sleep: TIMED_WAITING
+▶ After sleep: RUNNABLE
+4. After completion: TERMINATED
+```
+
+---
+
+### ⚠️ Common Mistakes to Avoid
+
+| Mistake | What happens | Correct approach |
+|---|---|---|
+| Calling `run()` instead of `start()` | The code runs on the **current** thread, not a new one. No new thread is created. | Always call `start()` to create a new thread. |
+| Calling `start()` twice on the same thread | Throws `IllegalThreadStateException` | Create a **new** thread object if you need to run the task again. |
+| Assuming `start()` means immediate execution | The thread goes to **Runnable**, not Running. The scheduler decides when it actually runs. | Don't depend on exact execution order between threads. |
+
+---
+
+### 📝 Quick Summary
+
+| State | Meaning | How it gets here |
+|---|---|---|
+| **New** | Thread object created, not yet started | `new Thread()` |
+| **Runnable** | Ready to run, waiting for CPU | `start()` is called |
+| **Running** | CPU is actively executing the thread | Thread scheduler picks it |
+| **Waiting** | Waiting indefinitely for a signal | `wait()`, `join()` |
+| **Timed Waiting** | Waiting for a specific duration | `sleep(ms)`, `wait(ms)`, `join(ms)` |
+| **Terminated** | Finished execution, cannot restart | `run()` completes or exception occurs |
+
+---
+
+### 💡 One-Line Definition
+
+> The **thread life cycle** describes the journey of a thread from **creation** (New) → **readiness** (Runnable) → **execution** (Running) → optionally **pausing** (Waiting / Timed Waiting) → and finally **completion** (Terminated).
+
+---
