@@ -31,7 +31,7 @@ Before jumping into multithreading, let's nail down three terms you'll hear cons
 
 #### Program
 
-A program is a set of instructions written in a programming language, stored as a file on disk. It is a passive entity — it doesn't do anything until it is executed. For example, a .java file or a compiled .class file sitting on your hard drive is a program.
+A **program** is a **set of instructions** written in a programming language, **stored as a file on disk**. It is a **passive entity** — it **doesn't do anything until it is executed**. For example, a .java file or a compiled .class file sitting on your hard drive is a program.
 
 ```
 📁 MyApp.java  ←  This is a program (just a file, doing nothing)
@@ -39,15 +39,15 @@ A program is a set of instructions written in a programming language, stored as 
 
 #### Process
 
-A process is a running instance of a program. When you **run** that program, the operating system loads it into memory and starts executing it. Now it becomes a **process**
+A **process** is a **running instance of a program**. When you **run** that program, the **operating system loads it into memory** and starts executing it. Now it becomes a **process**
 
 Think of it like this: the recipe book is still on the shelf, but now a **chef has opened it and started cooking**. That active cooking session is a process.
 
-> A process gets its own chunk of memory, its own resources, and is managed by the operating system.
+> A process gets **its own chunk of memory**, **its own resources**, and is **managed by the operating system**.
 
 #### Thread
 
-A thread is the smallest unit of execution within a process that the CPU can schedule and run.
+A **thread** is the **smallest unit of execution** within a process that the **CPU can schedule and run**.
 
 > If a process is a **kitchen**, then a thread is a **single chef** working in that kitchen. You can have one chef (single-threaded) or many chefs working together (multithreaded).
 
@@ -81,7 +81,7 @@ A thread is the smallest unit of execution within a process that the CPU can sch
 
 Let's zoom in a little more.
 
-A **thread** is simply a **sequence of instructions** that can be executed independently. When your Java program starts, the JVM automatically creates one thread for you — the **main thread**. This is the thread that begins executing your `main()` method.
+A **thread** is simply a **sequence of instructions** that can be executed independently. When your Java program starts, **the JVM automatically creates one thread for you** — the **main thread**. This is the thread that begins executing your `main()` method.
 
 ```java
 public class HelloWorld {
@@ -92,7 +92,7 @@ public class HelloWorld {
 }
 ```
 
-Even this simple program uses a thread — you just never had to think about it before!
+Even this simple program **uses a thread** — you just never had to think about it before!
 
 ---
 
@@ -122,7 +122,7 @@ Everything happens in a straight line. Simple? Yes. Efficient? **Not always.**
 
 1. **Wasted time during waiting:** If Task A is downloading a file from the internet, the CPU is mostly just *waiting* for the network. It could be doing something useful instead.
 
-2. **Frozen user interfaces:** Ever clicked a button in an app and it froze? That's because the single thread was busy doing something else (like loading data) and couldn't respond to your click.
+2. **Frozen user interfaces:** Ever clicked a button in an app and it froze? That's because the single thread was **busy doing something else** (like loading data) and **couldn't respond to your click**.
 
 3. **No use of modern hardware:** Your computer likely has 4, 8, or even 16 CPU cores. A single-threaded program uses only **one** of them. The rest sit idle — like having a 16-lane highway but only allowing one car on it.
 
@@ -145,7 +145,7 @@ Your CPU cores in a single-threaded program:
 
 > **Definition :**
 
-**Multithreading** is a programming concept where **multiple threads run within the same process,** allowing multiple tasks to make progress simultaneously. It improves application performance by utilizing CPU resources more efficiently, keeps the UI responsive, and allows better use of multi-core processors. Java has built-in support for multithreading from the very beginning.
+**Multithreading** is a programming concept where **multiple threads run within the same process,** allowing multiple tasks to make progress simultaneously. It **improves application performance** by **utilizing CPU resources more efficiently**, **keeps the UI responsive**, and allows **better use of multi-core processors**. **Java has built-in support for multithreading from the very beginning.**
 
 Going back to our earlier example:
 
@@ -275,7 +275,7 @@ Think of a **thread** as a **person working inside that house**.
 
 - Multiple people can work inside the same house.
 - They share the same rooms and resources.
-- Because they share things, they must coordinate properly.
+- Because they share things, they **must coordinate properly**.
 
 So:
 
@@ -321,20 +321,20 @@ Java Application Process
 └── User Interface Thread
 ```
 
-All these threads belong to the same Java process, but they can perform different tasks.
+All these threads belong to the **same Java process**, but they can **perform different tasks**.
 
 ---
 
 ### 🔒 Why Threads Need Synchronization
 
-Threads share the same memory of a process. This is useful because sharing data becomes easy, but it also creates risk.
+**Threads share the same memory of a process.** This is useful because **sharing data becomes easy**, but it also **creates risk**.
 
 ```text
 Thread 1: Writing to file
 Thread 2: Closing the same file
 ```
 
-If both happen at the same time without control, the program may behave incorrectly.
+If both happen at the same time **without control**, the program **may behave incorrectly**.
 
 That is why we use synchronization mechanisms such as:
 
