@@ -1857,24 +1857,131 @@ When a thread creates another thread, the **child thread inherits the daemon sta
 
 ## 5.4. Priority-Based Methods
 
-Every thread has a priority.
+### 🤔 What is Thread Priority?
 
-Thread priority tells the thread scheduler which thread is more important, but it does not guarantee exact execution order.
+> **Thread priority is a number that indicates the relative importance of a thread. It acts as a hint to the thread scheduler about which thread should be considered first for execution, but it does not guarantee the execution order.**
 
-Java thread priority range:
+Every thread in Java has a **priority**.
 
-```text
-Minimum priority = 1
-Normal priority  = 5
-Maximum priority = 10
-```
+A thread's priority tells the **Thread Scheduler** how important that thread is compared to other runnable threads.
 
-Java constants:
+> **Thread priority is only a hint to the scheduler, not a guarantee that the thread will execute first.**
+
+The actual execution order depends on several factors such as:
+
+- Operating System
+- JVM implementation
+- Thread Scheduler
+- CPU availability
+- Platform
+
+### 📊 Priority Range
+
+Java thread priorities are represented by integers ranging from **1 to 10**.
+
+| Priority | Meaning |
+|---|---|
+| **1** | Lowest Priority |
+| **5** | Normal Priority (Default) |
+| **10** | Highest Priority |
+
+Java provides the following predefined constants:
 
 ```java
 Thread.MIN_PRIORITY   // 1
 Thread.NORM_PRIORITY  // 5
 Thread.MAX_PRIORITY   // 10
+```
+
+---
+
+### ⚙️ Default Priority
+
+When a thread is created, it receives a default priority.
+
+- The **main thread** starts with priority **5** (`Thread.NORM_PRIORITY`).
+- By default, every **child thread inherits the priority of its parent thread**, unless it is explicitly changed using `setPriority()`.
+
+Example:
+
+```text
+main Thread (Priority = 5)
+          │
+          ├── Child Thread-1 (Priority = 5)
+          └── Child Thread-2 (Priority = 5)
+```
+
+If the parent thread has priority **8**, then newly created child threads will also have priority **8** by default.
+
+---
+
+### ⚠️ Invalid Priority Values
+
+Only values between **1 and 10** are valid.
+
+Setting any other value results in an exception.
+
+```java
+t.setPriority(15);
+```
+
+Output:
+
+```text
+Exception in thread "main"
+java.lang.IllegalArgumentException
+```
+
+Invalid values include:
+
+- 0
+- Negative numbers
+- Any value greater than 10
+
+---
+
+### 🌐 Thread Priorities are Platform Dependent
+
+Thread priorities are **platform-dependent**.
+
+Different operating systems and JVM implementations may treat priorities differently.
+
+For example:
+
+- Some operating systems strongly consider thread priorities.
+- Others give very little importance to them.
+- Modern operating systems (such as Windows and Linux) primarily use **time-slicing and fairness algorithms**, so thread priorities often have only a limited effect.
+
+---
+
+### ✅ Valid Priority Constants
+
+```java
+Thread.MIN_PRIORITY   // 1
+Thread.NORM_PRIORITY  // 5
+Thread.MAX_PRIORITY   // 10
+```
+
+---
+
+### ❌ Constants That Do NOT Exist
+
+Java does **not** provide the following constants:
+
+```text
+MINIMUM_PRIORITY
+LOW_PRIORITY
+NORMAL_PRIORITY
+HIGH_PRIORITY
+MAXIMUM_PRIORITY
+```
+
+Only the three constants below are valid:
+
+```java
+Thread.MIN_PRIORITY
+Thread.NORM_PRIORITY
+Thread.MAX_PRIORITY
 ```
 
 ---
@@ -1947,6 +2054,82 @@ setPriority() = Change importance level of thread
 Important point:
 
 Priority gives a hint to the scheduler, but it does not guarantee that the highest priority thread will always run first.
+
+---
+
+
+### 🧪 Practical Example — Child Thread Inherits Parent's Priority
+
+This example shows a very important behavior: **a child thread inherits the priority of the thread that created it**. If you change the parent's priority before creating the child, the child will get the **new** priority, not the default one.
+
+```java
+public class MT_Practice5 extends Thread {
+
+    // This run() method executes when the child thread starts
+    public void run() {
+        System.out.println("Child Thread");
+
+        // Get the priority of the currently running child thread
+        System.out.println("Child Thread Priority : " + Thread.currentThread().getPriority());
+    }
+
+    public static void main(String[] args) {
+
+        // Step 1: Check the default priority of the main thread
+        // The main thread always starts with priority 5 (NORM_PRIORITY)
+        System.out.println("Main Thread Old Priority : " + Thread.currentThread().getPriority());
+
+        // Step 2: Change the main thread's priority to MAX_PRIORITY (10)
+        Thread.currentThread().setPriority(MAX_PRIORITY);
+
+        // Step 3: Verify the main thread's new priority
+        System.out.println("Main Thread New Priority : " + Thread.currentThread().getPriority());
+
+        // Step 4: Create a child thread
+        // Since the main thread now has priority 10,
+        // the child thread will INHERIT priority 10 (not the default 5)
+        MT_Practice5 mtPractice5 = new MT_Practice5();
+
+        // Step 5: Start the child thread
+        mtPractice5.start();
+    }
+}
+```
+
+#### 📤 Output
+
+```text
+Main Thread Old Priority : 5
+Main Thread New Priority : 10
+Child Thread
+Child Thread Priority : 10
+```
+
+---
+
+
+```text
+Flow Diagram:
+
+  main Thread (Priority = 5)
+       │
+       │  setPriority(MAX_PRIORITY)
+       ▼
+  main Thread (Priority = 10)
+       │
+       │  new MT_Practice5()     ← Child is created HERE
+       │                            so it inherits priority 10
+       ▼
+  Child Thread (Priority = 10)   ← NOT 5, because parent was 10
+       │                            at the time of creation
+       │  start()
+       ▼
+  Child prints: "Child Thread Priority : 10"
+```
+
+> 💡 **Key Takeaway:** The child thread **does not always get the default priority (5)**. It gets **whatever priority the parent thread has at the time the child is created**. In this example, we changed the main thread's priority to `10` **before** creating the child, so the child inherited `10`.
+
+> ⚠️ **What would happen if we created the child BEFORE changing the priority?** Then the child would have inherited the original priority of `5`, and only the main thread would have `10`.
 
 ---
 
