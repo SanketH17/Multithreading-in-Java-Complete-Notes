@@ -599,6 +599,8 @@ Thread Life Cycle States:
                                                        └────────────┘
 ```
 
+![Thread Life Cycle Diagram](img1.png)
+
 ---
 
 ### 📝 All Thread States Explained
