@@ -824,15 +824,8 @@ t.start();
 
 ---
 
-### 💡 One-Line Definition
-
-> The **thread life cycle** describes the journey of a thread from **creation** (New) → **readiness** (Runnable) → **execution** (Running) → optionally **pausing** (Waiting / Timed Waiting) → and finally **completion** (Terminated).
-
----
-
 ## 4. Different Cases of Executing Threads in Java
 
-Now that we know **how to create threads** and understand the **thread life cycle**, let's look at the different ways threads and tasks can be combined in Java.
 
 There are **four main cases** based on the number of **tasks** and the number of **threads** doing the work:
 
@@ -854,24 +847,20 @@ There are **four main cases** based on the number of **tasks** and the number of
    └───────────────────────────┘   └───────────────────────────┘
 ```
 
-Let's explore each case with a simple example.
-
 ---
 
 ### Case 1 — Performing a Single Task from a Single Thread
 
 #### 📖 What does this mean?
 
-One thread performs **one task**. This is the simplest and most straightforward way to use threads. You create a single thread, give it one job, and it executes that job from start to finish.
-
-> Think of it like hiring **one person** to do **one job** — say, painting a wall. They start, they finish, done.
+You create a single thread, give it one job, and it executes that job from start to finish.
 
 ```text
    Thread-1:  ┌──────────────────────┐
               │   Task A (printing)  │
               └──────────────────────┘
 
-   One thread, one task — simple!
+   One thread, one task
 ```
 
 #### 💻 Code Example
@@ -920,8 +909,6 @@ Task - 5
 #### 📖 What does this mean?
 
 Multiple threads all perform the **same task**. Each thread independently runs the same `run()` method. This is useful when you want the same job to run more than once at the same time.
-
-> Think of it like hiring **three painters** to each paint **the same type of wall**. They all do the same work, but in parallel.
 
 ```text
    Thread-1:  ┌──────────────────────┐
@@ -991,11 +978,7 @@ Thread-2 - Task - 3
 
 ### Case 3 — Performing Multiple Tasks from Multiple Threads
 
-#### 📖 What does this mean?
-
 Each thread performs a **different task**. This is the most common use of multithreading in real-world applications — different threads doing different jobs at the same time.
-
-> Think of it like a **restaurant kitchen**: one chef chops vegetables, another grills meat, and a third prepares dessert. Everyone is working at the same time, but on **different things**.
 
 ```text
    Thread-1:  ┌──────────────────────┐
@@ -1004,8 +987,11 @@ Each thread performs a **different task**. This is the most common use of multit
    Thread-2:  ┌──────────────────────┐
               │   Task B (counting)  │
               └──────────────────────┘
+   Thread-3:  ┌────────────────────────────┐
+              │   Task C (any other task)  │
+              └────────────────────────────┘
 
-   Two threads, two different tasks!
+   Two or more threads, two or more different tasks!
 ```
 
 #### 💻 Code Example
@@ -1067,11 +1053,7 @@ Task B - Count 3
 
 ### Case 4 — Performing Multiple Tasks from a Single Thread
 
-#### 📖 What does this mean?
-
 A single thread performs **multiple tasks one after another**. Since there is only one thread, the tasks cannot run at the same time — they execute **sequentially**. The second task starts only after the first one finishes.
-
-> Think of it like **one person** doing the laundry **and then** cooking dinner. They can't do both at once — they finish one job, then move on to the next.
 
 ```text
    Thread-1:  ┌──────────────────────┐┌──────────────────────┐
@@ -1130,22 +1112,6 @@ Task B - Count 3
 
 ---
 
-### 📊 All Four Cases at a Glance
-
-| Case | Threads | Tasks | Execution Style | Real-Life Analogy |
-|---|---|---|---|---|
-| **Case 1** | 1 Thread | 1 Task | Sequential | One painter paints one wall |
-| **Case 2** | Multiple Threads | 1 Task (same) | Concurrent | Three painters each paint the same type of wall |
-| **Case 3** | Multiple Threads | Multiple Tasks (different) | Concurrent | One chef chops, another grills, another bakes |
-| **Case 4** | 1 Thread | Multiple Tasks | Sequential | One person does laundry, then cooks dinner |
-
----
-
-### 💡 One-Line Definition
-
-> The way tasks execute depends on **how many threads** carry them out — **multiple threads** enable **concurrent execution**, while a **single thread** always executes tasks **one after another**.
-
----
 
 ## 5. Java Thread Class Methods
 
