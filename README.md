@@ -1363,7 +1363,19 @@ isAlive() = Is this thread still active?
 
 ## 5.2. Naming Methods
 
-Naming methods are used to give names to threads and get thread names.
+Naming methods are used to **give names to threads** and **get thread names**. By default, Java names threads as `Thread-0`, `Thread-1`, `Thread-2`, and so on. But in real projects, giving **meaningful names** makes debugging much easier.
+
+> Imagine 10 threads running at the same time and something goes wrong. If they're all just `Thread-0`, `Thread-1`, etc., finding the problem is like searching for a needle in a haystack. But if they're named `DatabaseThread`, `UIThread`, `FileDownloader` — you know **exactly** where to look.
+
+```text
+Without naming:                    With naming:
+
+  Thread-0 → Error!                 DatabaseThread → Error!
+  Thread-1                          UIThread
+  Thread-2                          FileDownloader
+
+  Which thread failed? 🤷           Ah, the database thread! 💡
+```
 
 ---
 
@@ -1375,13 +1387,85 @@ The `getName()` method returns the name of a thread.
 public final String getName()
 ```
 
-Example:
+Simple meaning:
+
+```text
+getName() = Tell me the thread name
+```
+
+---
+
+#### Example 1 — Default thread names
+
+When you don't set a name, Java automatically assigns names like `Thread-0`, `Thread-1`, etc.
 
 ```java
-public class Main {
+public class DefaultNames {
     public static void main(String[] args) {
         Thread t1 = new Thread();
+        Thread t2 = new Thread();
+        Thread t3 = new Thread();
+
         System.out.println(t1.getName());
+        System.out.println(t2.getName());
+        System.out.println(t3.getName());
+    }
+}
+```
+
+Output:
+
+```text
+Thread-0
+Thread-1
+Thread-2
+```
+
+> Java uses an internal counter. Every new `Thread` object gets the next number: `Thread-0`, `Thread-1`, `Thread-2`, and so on.
+
+---
+
+#### Example 2 — Getting the main thread's name
+
+The main thread also has a name — it's simply called `main`.
+
+```java
+public class MainThreadName {
+    public static void main(String[] args) {
+        Thread current = Thread.currentThread();
+        System.out.println("Current thread name: " + current.getName());
+    }
+}
+```
+
+Output:
+
+```text
+Current thread name: main
+```
+
+> The `main` thread is the thread that Java creates automatically to run your `main()` method. Its name is always `main`.
+
+---
+
+#### Example 3 — Getting the thread name inside `run()`
+
+You can use `Thread.currentThread().getName()` inside the `run()` method to find out **which thread** is executing the code.
+
+```java
+class MyThread extends Thread {
+    public void run() {
+        System.out.println("Running in: " + Thread.currentThread().getName());
+    }
+}
+
+public class NameInsideRun {
+    public static void main(String[] args) {
+        MyThread t1 = new MyThread();
+        MyThread t2 = new MyThread();
+
+        t1.start();
+        t2.start();
     }
 }
 ```
@@ -1389,14 +1473,11 @@ public class Main {
 Possible output:
 
 ```text
-Thread-0
+Running in: Thread-0
+Running in: Thread-1
 ```
 
-Simple meaning:
-
-```text
-getName() = Tell me the thread name
-```
+> Inside `run()`, you don't have direct access to the variable name (`t1`, `t2`). So `Thread.currentThread().getName()` is the way to know **who is running** this code.
 
 ---
 
@@ -1408,24 +1489,6 @@ The `setName()` method changes the name of a thread.
 public final synchronized void setName(String name)
 ```
 
-Example:
-
-```java
-public class Main {
-    public static void main(String[] args) {
-        Thread t1 = new Thread();
-        t1.setName("Worker-1");
-        System.out.println(t1.getName());
-    }
-}
-```
-
-Output:
-
-```text
-Worker-1
-```
-
 Simple meaning:
 
 ```text
@@ -1434,7 +1497,72 @@ setName() = Give a name to the thread
 
 ---
 
-## 5.3. Daemon Thread Methods
+#### Example 4 — Setting a custom name with `setName()`
+
+```java
+public class CustomName {
+    public static void main(String[] args) {
+        Thread t1 = new Thread();
+        System.out.println("Before: " + t1.getName());
+
+        t1.setName("Worker-1");
+        System.out.println("After:  " + t1.getName());
+    }
+}
+```
+
+Output:
+
+```text
+Before: Thread-0
+After:  Worker-1
+```
+
+> You can call `setName()` **at any time** — before or after starting the thread. But it's best to set the name **before** calling `start()` so the name appears correctly in any log output from the very beginning.
+
+---
+
+#### Example 5 — Naming a thread using the `Thread` constructor
+
+Instead of calling `setName()` separately, you can pass the name **directly in the constructor** — this is a cleaner approach.
+
+```java
+class DownloadThread extends Thread {
+
+    // Constructor that passes the name to the Thread class
+    public DownloadThread(String name) {
+        super(name);  // Calls Thread(String name) constructor
+    }
+
+    public void run() {
+        System.out.println(Thread.currentThread().getName() + " is downloading a file...");
+    }
+}
+
+public class ConstructorNaming {
+    public static void main(String[] args) {
+        DownloadThread t1 = new DownloadThread("FileDownloader");
+        DownloadThread t2 = new DownloadThread("ImageDownloader");
+
+        t1.start();
+        t2.start();
+    }
+}
+```
+
+Possible output:
+
+```text
+FileDownloader is downloading a file...
+ImageDownloader is downloading a file...
+```
+
+> Using `super(name)` in the constructor is the **preferred way** to name threads in real projects because the name is set at creation time itself.
+
+---
+
+
+## 5.3. Daemon Thread and its Methods
 
 A **daemon thread** is a background helper thread.
 
