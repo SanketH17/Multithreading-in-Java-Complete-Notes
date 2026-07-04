@@ -2141,20 +2141,213 @@ These methods are used to pause, wait, or allow other threads to run.
 
 ### `sleep(long millis)`
 
-The `sleep()` method pauses the current thread for a given time.
+## Interview Definition
+
+> **`Thread.sleep()` is a static method that temporarily pauses the execution of the currently executing thread for a specified amount of time. During this period, the thread enters the `TIMED_WAITING` state and becomes eligible to run again after the sleep duration expires.**
+
+---
+
+## What is `sleep()`?
+
+The `sleep()` method is used to **temporarily pause the execution of the current thread** for a specified amount of time.
+
+It is a **static method** of the `Thread` class.
+
+### Syntax
 
 ```java
 public static native void sleep(long millis) throws InterruptedException
 ```
 
-Example:
+There is also an overloaded version:
+
+```java
+public static void sleep(long millis, int nanos) throws InterruptedException
+```
+
+---
+
+## Parameters
+
+### `millis`
+
+The time (in **milliseconds**) for which the current thread should sleep.
+
+```text
+1000 milliseconds = 1 second
+```
+
+### `nanos`
+
+An additional delay in **nanoseconds**.
+
+Valid range:
+
+```text
+0 - 999999
+```
+
+---
+
+## Simple Meaning
+
+```text
+sleep()
+      ↓
+Pause the current thread for some time.
+```
+
+Or,
+
+```text
+sleep() = Take a short rest and resume later.
+```
+
+---
+
+## Basic Example
 
 ```java
 public class Main {
+
     public static void main(String[] args) throws InterruptedException {
+
         System.out.println("Before sleep");
+
         Thread.sleep(1000);
+
         System.out.println("After sleep");
+    }
+}
+```
+
+### Output
+
+```text
+Before sleep
+
+(wait approximately 1 second)
+
+After sleep
+```
+
+---
+
+## Example: Printing Numbers with Delay
+
+```java
+public class Main {
+
+    public static void main(String[] args) throws InterruptedException {
+
+        for (int i = 1; i <= 5; i++) {
+
+            System.out.println(i);
+
+            Thread.sleep(1000);
+        }
+    }
+}
+```
+
+### Output
+
+```text
+1
+(wait 1 second)
+
+2
+(wait 1 second)
+
+3
+(wait 1 second)
+
+4
+(wait 1 second)
+
+5
+```
+
+---
+
+# Important Points about `sleep()`
+
+## 1. `sleep()` Always Pauses the Current Thread
+
+The `sleep()` method **always pauses the currently executing thread**, not the thread object on which it is called.
+
+For this reason, `sleep()` is declared as a **static** method.
+
+Correct usage:
+
+```java
+Thread.sleep(1000);
+```
+
+Although the following code compiles,
+
+```java
+Thread t = new Thread();
+
+t.sleep(1000);
+```
+
+it is **misleading**.
+
+It still pauses the **currently executing thread**, **not** the thread referenced by `t`.
+
+> **Interview Point:** Always call `sleep()` using the class name (`Thread.sleep()`).
+
+---
+
+## 2. `sleep()` Puts the Thread into `TIMED_WAITING`
+
+When a thread calls `sleep()`,
+
+```text
+RUNNING
+    │
+    │ sleep(3000)
+    ▼
+TIMED_WAITING
+    │
+    │ Time expires
+    ▼
+RUNNABLE
+```
+
+After the specified time expires, the thread moves back to the **RUNNABLE** state.
+
+It **does not immediately start running**.
+
+The Thread Scheduler decides when it will actually execute.
+
+---
+
+## 3. `sleep()` Does NOT Release Locks
+
+One of the most important interview questions.
+
+If a thread owns a synchronized lock before calling `sleep()`, it **continues holding that lock** while sleeping.
+
+Example:
+
+```java
+class Shared {
+
+    public synchronized void display() {
+
+        try {
+
+            System.out.println(Thread.currentThread().getName() + " acquired lock");
+
+            Thread.sleep(5000);
+
+            System.out.println(Thread.currentThread().getName() + " finished");
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
 ```
@@ -2162,17 +2355,358 @@ public class Main {
 Output:
 
 ```text
-Before sleep
-After sleep
+Thread-1 acquired lock
+
+(wait 5 seconds)
+
+Thread-1 finished
+
+Thread-2 acquired lock
 ```
 
-There will be a delay of around 1 second between both lines.
+> **Interview Point:** `sleep()` pauses execution but **does not release synchronized locks (monitors).**
 
-Simple meaning:
+---
+
+## 4. `sleep()` Throws `InterruptedException`
+
+The `sleep()` method throws a **checked exception**.
+
+Therefore, it must either be
+
+- handled using `try-catch`, or
+- declared using `throws`.
+
+Example:
+
+```java
+Thread.sleep(1000);
+```
+
+Compiler Error:
 
 ```text
-sleep() = Take rest for some time
+Unhandled exception:
+InterruptedException
 ```
+
+Correct:
+
+```java
+try {
+
+    Thread.sleep(1000);
+
+} catch (InterruptedException e) {
+
+    e.printStackTrace();
+}
+```
+
+or
+
+```java
+public static void main(String[] args)
+        throws InterruptedException
+```
+
+---
+
+## 5. Another Thread Can Interrupt a Sleeping Thread
+
+If one thread interrupts another thread while it is sleeping,
+
+the sleeping thread immediately wakes up and throws
+
+```text
+InterruptedException
+```
+
+Example:
+
+```java
+class MyThread extends Thread {
+
+    public void run() {
+
+        try {
+
+            Thread.sleep(5000);
+
+            System.out.println("Thread Completed");
+
+        } catch (InterruptedException e) {
+
+            System.out.println("Thread Interrupted");
+        }
+    }
+}
+```
+
+---
+
+## 6. Actual Sleep Time is NOT Guaranteed
+
+Many beginners think
+
+```java
+Thread.sleep(1000);
+```
+
+means
+
+> "Wake up exactly after 1 second."
+
+This is **not true**.
+
+It only guarantees that the thread will **not run for at least** the specified duration.
+
+After that,
+
+- CPU availability
+- Operating System
+- JVM
+- Thread Scheduler
+
+determine when the thread actually resumes.
+
+Example:
+
+```text
+Requested sleep : 1000 ms
+
+Actual sleep :
+
+1002 ms
+1008 ms
+1015 ms
+```
+
+All of these are possible.
+
+> **Interview Point:** `sleep()` guarantees the **minimum sleep duration**, not the exact wake-up time.
+
+---
+
+## 7. Thread Scheduler May Execute Another Thread
+
+While one thread is sleeping,
+
+it cannot use the CPU.
+
+The Thread Scheduler may allocate the CPU to another runnable thread.
+
+```text
+Thread-1
+    │
+    │ sleep(5000)
+    ▼
+TIMED_WAITING
+
+CPU
+ │
+ ▼
+
+Thread-2 starts executing
+```
+
+When **multiple threads** use `sleep()` with the same duration, they all enter `TIMED_WAITING` around the same time and wake up around the same time.
+
+But the **Thread Scheduler decides which thread runs first** after waking up.
+
+This causes **interleaved (mixed) output** across threads — each iteration may show threads printing in a different order.
+
+> **Interview Point:** `sleep()` does not guarantee execution order among multiple threads. Even with the same sleep duration, the output order depends entirely on the Thread Scheduler.
+
+---
+
+## 8. Negative Milliseconds are NOT Allowed
+
+Passing a negative value throws
+
+```text
+IllegalArgumentException
+```
+
+Example:
+
+```java
+Thread.sleep(-1000);
+```
+
+Output:
+
+```text
+java.lang.IllegalArgumentException
+```
+
+---
+
+## 9. Nanoseconds Must Be in the Valid Range
+
+The overloaded method
+
+```java
+Thread.sleep(long millis, int nanos)
+```
+
+requires
+
+```text
+0 <= nanos <= 999999
+```
+
+Otherwise,
+
+```text
+IllegalArgumentException
+```
+
+is thrown.
+
+Example:
+
+```java
+Thread.sleep(1000, 1000000);
+```
+
+Output:
+
+```text
+java.lang.IllegalArgumentException
+```
+
+---
+
+## 10. `sleep()` is a Static Method
+
+Because it always pauses the **currently executing thread**, `sleep()` is declared as a static method.
+
+```java
+public static native void sleep(long millis)
+```
+
+It belongs to the **Thread class**, not to any specific thread object.
+
+---
+
+# Summary
+
+| Feature | Description |
+|----------|-------------|
+| Method Type | Static |
+| Thread State | TIMED_WAITING |
+| Releases Lock? | ❌ No |
+| Throws Exception | `InterruptedException` |
+| Sleep Time Guaranteed? | ❌ No (minimum duration only) |
+| Negative Milliseconds | ❌ `IllegalArgumentException` |
+| Valid Nanoseconds | `0 - 999999` |
+| Pauses Which Thread? | Currently executing thread |
+
+---
+
+## Practical Example: Multiple Threads Using `sleep()`
+
+This example demonstrates how `sleep()` behaves when **multiple threads** are running concurrently.
+
+Each thread prints numbers 1 to 5 with a **2-second delay** between each print.
+
+```java
+public class MT_Practice10 extends Thread {
+
+    public void run() {
+
+        try {
+            for (int i = 1; i <= 5; i++) {
+                System.out.println(getName() + " : " + i);
+                Thread.sleep(2000);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public static void main(String[] args) {
+
+        MT_Practice10 t1 = new MT_Practice10();
+        MT_Practice10 t2 = new MT_Practice10();
+        MT_Practice10 t3 = new MT_Practice10();
+
+        t1.setName("Thread - 1");
+        t2.setName("Thread - 2");
+        t3.setName("Thread - 3");
+
+        t1.start();
+        t2.start();
+        t3.start();
+
+    }
+}
+```
+
+### Output
+
+```text
+Thread - 1 : 1
+Thread - 2 : 1
+Thread - 3 : 1
+Thread - 1 : 2
+Thread - 2 : 2
+Thread - 3 : 2
+Thread - 3 : 3
+Thread - 1 : 3
+Thread - 2 : 3
+Thread - 2 : 4
+Thread - 1 : 4
+Thread - 3 : 4
+Thread - 3 : 5
+Thread - 2 : 5
+Thread - 1 : 5
+```
+
+### Key Observations
+
+**1. All three threads run concurrently, not one after another.**
+
+Each thread starts almost at the same time. They all enter `sleep(2000)` after printing, allowing the scheduler to pick any of the other threads next.
+
+**2. The output order is interleaved and non-deterministic.**
+
+Notice that the order within each "round" changes:
+
+```text
+Round 1 → Thread-1, Thread-2, Thread-3
+Round 3 → Thread-3, Thread-1, Thread-2
+Round 4 → Thread-2, Thread-1, Thread-3
+```
+
+This is because after `sleep()` expires, all three threads become `RUNNABLE` at roughly the same time — the **Thread Scheduler** picks whichever thread it wants.
+
+**3. `sleep()` creates a gap between iterations, not between threads.**
+
+Each thread independently sleeps for 2 seconds after its own print. Since all three are sleeping and waking around the same time, you see all three print within each 2-second window.
+
+```text
+┌─────────┐     ┌─────────┐     ┌─────────┐
+│Thread-1  │     │Thread-1  │     │Thread-1  │
+│prints: 1 │     │prints: 2 │     │prints: 3 │
+└────┬─────┘     └────┬─────┘     └────┬─────┘
+     │ sleep(2s)      │ sleep(2s)      │ sleep(2s)
+┌────┴─────┐     ┌────┴─────┐     ┌────┴─────┐
+│Thread-2  │     │Thread-2  │     │Thread-2  │
+│prints: 1 │     │prints: 2 │     │prints: 3 │
+└────┬─────┘     └────┬─────┘     └────┬─────┘
+     │ sleep(2s)      │ sleep(2s)      │ sleep(2s)
+┌────┴─────┐     ┌────┴─────┐     ┌────┴─────┐
+│Thread-3  │     │Thread-3  │     │Thread-3  │
+│prints: 1 │     │prints: 2 │     │prints: 3 │
+└──────────┘     └──────────┘     └──────────┘
+```
+
+> **Interview Point:** When multiple threads use `sleep()` with the same duration, they wake up around the same time but the **execution order after waking is decided by the Thread Scheduler** — making the output non-deterministic.
+
+---
 
 ---
 
