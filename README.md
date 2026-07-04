@@ -1564,42 +1564,94 @@ ImageDownloader is downloading a file...
 
 ## 5.3. Daemon Thread and its Methods
 
-A **daemon thread** is a background helper thread.
+### 🤔 What is a Daemon Thread?
 
-Simple analogy:
+In Java, there are **two types** of threads:
+
+1. **User threads** (also called non-daemon threads) — These are the **main workers**. The JVM stays alive as long as **at least one user thread** is running.
+2. **Daemon threads** — These are **background helper threads**. They provide support services to user threads, and the **JVM does not wait** for them to finish.
+
+> Think of a **restaurant**:
+> - **User threads** = the **chefs** cooking food. As long as even one chef is working, the restaurant stays open.
+> - **Daemon threads** = the **cleaning staff** who mop the floor and wipe tables in the background. The moment all chefs leave, the cleaning staff is sent home too — even if they haven't finished cleaning.
 
 ```text
-Normal thread = Main worker
-Daemon thread = Background helper
+ Restaurant (JVM)
+ ┌───────────────────────────────────────────────────┐
+ │                                                   │
+ │   👨‍🍳 Chef 1 (User Thread)  → Cooking Order #1     │
+ │   👨‍🍳 Chef 2 (User Thread)  → Cooking Order #2     │
+ │                                                   │
+ │   🧹 Cleaner (Daemon Thread) → Mopping floor      │
+ │   🧹 Cleaner (Daemon Thread) → Wiping tables      │
+ │                                                   │
+ │   When all chefs leave → Restaurant closes         │
+ │   Cleaners are sent home (even mid-task)           │
+ └───────────────────────────────────────────────────┘
 ```
 
-Example of background helper work:
+> **Key Rule:** When all **user threads** finish execution, the JVM **shuts down immediately** — and all daemon threads are **terminated automatically**, even if they are still running.
 
-- Garbage collection
-- Monitoring
-- Background cleanup
+---
 
-Important:
+### 📊 User Thread vs Daemon Thread
 
-When all normal user threads finish, daemon threads do not keep the JVM alive.
+| Point | User Thread | Daemon Thread |
+|---|---|---|
+| **Purpose** | Performs the **main tasks** of the application | Performs **background support tasks** |
+| **JVM behavior** | JVM **waits** for all user threads to finish before shutting down | JVM **does not wait** for daemon threads — they are killed when all user threads end |
+| **Default type** | Every thread is a **user thread** by default | Must be explicitly set using `setDaemon(true)` |
+| **Examples** | `main` thread, application logic threads | Garbage collector, signal handlers, monitoring threads |
+| **Importance** | **High** — they keep the program alive | **Low** — they are expendable helpers |
+| **Analogy** | Chefs in a restaurant | Cleaning staff in a restaurant |
+
+---
+
+### 🌍 Where are Daemon Threads Used in Real Life?
+
+Java itself uses daemon threads for several internal tasks:
+
+| Daemon Thread | What it Does |
+|---|---|
+| **Garbage Collector** | Automatically frees memory by removing unused objects |
+| **Signal Dispatcher** | Handles OS signals sent to the JVM |
+| **Finalizer Thread** | Runs `finalize()` methods on objects before they are garbage collected |
+| **Timer Threads** | Background scheduled tasks that should stop when the app stops |
+
+> You can also create your own daemon threads for tasks like **auto-saving**, **logging**, **health monitoring**, or **cache cleanup** — anything that should **run in the background** and **stop automatically** when your main program exits.
 
 ---
 
 ### `isDaemon()`
 
-The `isDaemon()` method checks whether a thread is daemon or not.
+The `isDaemon()` method checks whether a thread is a daemon thread or a user thread.
 
 ```java
 public final boolean isDaemon()
 ```
 
-Example:
+- Returns `true` if the thread is a daemon thread.
+- Returns `false` if the thread is a user (normal) thread.
+
+Simple meaning:
+
+```text
+isDaemon() = Is this thread a background helper?
+```
+
+---
+
+#### Example 1 — Checking the default thread type
+
+By default, every thread you create is a **user thread** (not a daemon thread).
 
 ```java
-public class Main {
+public class CheckDaemon {
     public static void main(String[] args) {
         Thread t1 = new Thread();
-        System.out.println(t1.isDaemon());
+
+        System.out.println("Is t1 a daemon thread? " + t1.isDaemon());
+        System.out.println("Is main a daemon thread? " + Thread.currentThread().isDaemon());
     }
 }
 ```
@@ -1607,46 +1659,317 @@ public class Main {
 Output:
 
 ```text
-false
+Is t1 a daemon thread? false
+Is main a daemon thread? false
 ```
 
-Simple meaning:
-
-```text
-isDaemon() = Is this thread a background helper thread?
-```
+> Both the `main` thread and any new thread you create are **user threads by default**. You have to explicitly mark a thread as daemon using `setDaemon(true)`.
 
 ---
 
 ### `setDaemon(boolean on)`
 
-The `setDaemon()` method marks a thread as daemon or non-daemon.
+The `setDaemon()` method marks a thread as a daemon thread or a user thread.
 
 ```java
 public final void setDaemon(boolean on)
 ```
 
-Example:
+- `setDaemon(true)` → Makes the thread a **daemon** (background helper).
+- `setDaemon(false)` → Makes the thread a **user thread** (this is the default, so you rarely need this).
+
+Simple meaning:
+
+```text
+setDaemon(true)  = Make this thread a background helper
+setDaemon(false) = Make this thread a normal worker (default)
+```
+
+> ⚠️ **Important Rule:** `setDaemon()` must be called **before** `start()`. If you try to call it **after** the thread has started, Java will throw an `IllegalThreadStateException`.
+
+---
+
+#### Example 2 — Setting a thread as daemon
 
 ```java
-public class Main {
+class BackgroundTask extends Thread {
+
+    public void run() {
+        for (int i = 1; i <= 5; i++) {
+            System.out.println(getName() + " is running - " + i);
+        }
+    }
+}
+
+public class SetDaemonExample {
     public static void main(String[] args) {
-        Thread t1 = new Thread();
-        t1.setDaemon(true);
+        BackgroundTask t1 = new BackgroundTask();
+        t1.setName("HelperThread");
+
+        System.out.println("Before setDaemon: " + t1.isDaemon());
+
+        t1.setDaemon(true);  // ✅ Must be called BEFORE start()
+
+        System.out.println("After setDaemon:  " + t1.isDaemon());
+
         t1.start();
     }
 }
 ```
 
-Important point:
-
-`setDaemon(true)` must be called before `start()`.
-
-Simple meaning:
+Output:
 
 ```text
-setDaemon(true) = Make this thread a background helper
+Before setDaemon: false
+After setDaemon:  true
+HelperThread is running - 1
+HelperThread is running - 2
+HelperThread is running - 3
+HelperThread is running - 4
+HelperThread is running - 5
 ```
+
+> We checked `isDaemon()` before and after calling `setDaemon(true)` — the thread changed from a user thread to a daemon thread. Since `main` doesn't end immediately, the daemon thread gets a chance to print all its output here.
+
+---
+
+#### Example 3 — Daemon thread getting killed when user threads finish
+
+This is the **most important behavior** to understand. Watch what happens when the `main` thread (user thread) finishes while a daemon thread is still running.
+
+```java
+class LongRunningDaemon extends Thread {
+
+    public void run() {
+        for (int i = 1; i <= 10; i++) {
+            System.out.println(getName() + " → working on item " + i);
+            try {
+                Thread.sleep(500);  // Sleep 500ms between each item
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println(getName() + " → finished all work!");  // May never print!
+    }
+}
+
+public class DaemonKilledExample {
+    public static void main(String[] args) throws InterruptedException {
+        LongRunningDaemon daemon = new LongRunningDaemon();
+        daemon.setName("BackgroundWorker");
+        daemon.setDaemon(true);
+        daemon.start();
+
+        // Main thread does a small task and then finishes
+        Thread.sleep(1500);  // Let the daemon run for 1.5 seconds
+        System.out.println("Main thread is done. Exiting...");
+        // JVM shuts down here → daemon is killed immediately!
+    }
+}
+```
+
+Possible output:
+
+```text
+BackgroundWorker → working on item 1
+BackgroundWorker → working on item 2
+BackgroundWorker → working on item 3
+Main thread is done. Exiting...
+```
+
+> The daemon thread was supposed to process **10 items**, but the `main` thread (a user thread) finished after ~1.5 seconds. Since there are **no more user threads alive**, the JVM shuts down and the daemon thread is **killed mid-work** — it never gets to print "finished all work!".
+
+```text
+What happened:
+
+Time ────────────────────────────────────────────────►
+
+Main (User):    ████████████████████ EXIT
+                                     ↓
+                                  JVM shuts down!
+
+Daemon:         ██████████████████ ✖ KILLED (was at item 3)
+                                     Items 4–10 never run.
+```
+
+> 💡 **This is the defining behavior of daemon threads.** They do not keep the JVM alive. They are **expendable** — the JVM won't wait for them.
+
+---
+
+#### Example 4 — What happens if you call `setDaemon()` after `start()`?
+
+```java
+public class DaemonAfterStart {
+    public static void main(String[] args) {
+        Thread t1 = new Thread(() -> {
+            System.out.println("Thread is running");
+        });
+
+        t1.start();
+
+        // ❌ Trying to set daemon AFTER start()
+        t1.setDaemon(true);  // This line will throw an exception!
+    }
+}
+```
+
+Output:
+
+```text
+Thread is running
+Exception in thread "main" java.lang.IllegalThreadStateException
+```
+
+> Once a thread has been started, you **cannot change** its daemon status. This is because the JVM needs to know at the start whether it should wait for this thread or not. Always set daemon status **before** calling `start()`.
+
+```text
+✅ Correct order:              ❌ Wrong order:
+
+  new Thread()                   new Thread()
+       ↓                              ↓
+  setDaemon(true)                 start()
+       ↓                              ↓
+  start()                        setDaemon(true)  → 💥 Exception!
+```
+
+---
+
+#### Example 5 — Daemon nature is inherited by child threads
+
+When a thread creates another thread, the **child thread inherits the daemon status** of its parent.
+
+```java
+class ParentThread extends Thread {
+
+    public void run() {
+        Thread child = new Thread(() -> {
+            System.out.println("Child thread - isDaemon: " + Thread.currentThread().isDaemon());
+        });
+        child.start();
+    }
+}
+
+public class DaemonInheritance {
+    public static void main(String[] args) throws InterruptedException {
+        // Case 1: Parent is a user thread
+        ParentThread userParent = new ParentThread();
+        userParent.setName("UserParent");
+        userParent.start();
+
+        Thread.sleep(500);  // Wait a bit for output
+
+        // Case 2: Parent is a daemon thread
+        ParentThread daemonParent = new ParentThread();
+        daemonParent.setName("DaemonParent");
+        daemonParent.setDaemon(true);
+        daemonParent.start();
+
+        Thread.sleep(500);  // Wait for output before main exits
+    }
+}
+```
+
+Possible output:
+
+```text
+Child thread - isDaemon: false
+Child thread - isDaemon: true
+```
+
+> The first child was created by a **user thread**, so it's also a user thread (`false`). The second child was created by a **daemon thread**, so it inherits that status and becomes a daemon too (`true`). You can always override this by explicitly calling `setDaemon()` on the child.
+
+---
+
+### 🧪 Practical Example — Auto-Save using a Daemon Thread
+
+Here's a realistic example where a daemon thread acts as an **auto-save feature** — like how Google Docs saves your work every few seconds in the background.
+
+```java
+class AutoSaver extends Thread {
+
+    public AutoSaver() {
+        super("AutoSaveThread");
+        setDaemon(true);  // Background task — should stop when app exits
+    }
+
+    public void run() {
+        while (true) {
+            System.out.println("[AutoSave] Saving your work...");
+            try {
+                Thread.sleep(2000);  // Auto-save every 2 seconds
+            } catch (InterruptedException e) {
+                break;
+            }
+        }
+    }
+}
+
+public class TextEditor {
+    public static void main(String[] args) throws InterruptedException {
+        AutoSaver autoSave = new AutoSaver();
+        autoSave.start();
+
+        // Simulate user typing for 5 seconds
+        for (int i = 1; i <= 5; i++) {
+            System.out.println("User is typing... (" + i + " sec)");
+            Thread.sleep(1000);
+        }
+
+        System.out.println("User closed the editor. Goodbye!");
+        // main thread ends → JVM shuts down → AutoSaveThread is killed
+    }
+}
+```
+
+Possible output:
+
+```text
+[AutoSave] Saving your work...
+User is typing... (1 sec)
+User is typing... (2 sec)
+[AutoSave] Saving your work...
+User is typing... (3 sec)
+User is typing... (4 sec)
+[AutoSave] Saving your work...
+User is typing... (5 sec)
+User closed the editor. Goodbye!
+```
+
+> The auto-save daemon runs in the background while the user types. When the user closes the editor (main thread ends), the auto-save thread is **automatically killed** — no cleanup needed. This is why daemon threads are perfect for background tasks that should **not prevent the app from exiting**.
+
+---
+
+### ⚠️ Common Mistakes to Avoid
+
+| Mistake | What Happens | Correct Approach |
+|---|---|---|
+| Calling `setDaemon()` **after** `start()` | Throws `IllegalThreadStateException` | Always call `setDaemon()` **before** `start()` |
+| Using daemon threads for **critical tasks** (like saving a database) | Work may be **lost** because the JVM kills daemon threads abruptly | Use **user threads** for any task where data loss is unacceptable |
+| Expecting daemon threads to **always finish** their work | Daemon threads can be killed **mid-execution** at any time | Design daemon tasks to be **safe to interrupt** at any point |
+| Forgetting that daemon status is **inherited** | Child threads of a daemon thread are also daemons by default | Explicitly set daemon status if you need a different behavior |
+
+---
+
+### 📝 Quick Summary
+
+| Method | What it Does | Returns |
+|---|---|---|
+| `isDaemon()` | Checks if a thread is a daemon thread | `true` = daemon, `false` = user thread |
+| `setDaemon(true)` | Marks the thread as a **daemon** (background helper) | — |
+| `setDaemon(false)` | Marks the thread as a **user thread** (default) | — |
+
+**Key rules to remember:**
+
+- Every thread is a **user thread by default**.
+- `setDaemon()` must be called **before** `start()`.
+- When all **user threads finish**, the JVM **shuts down** and **kills all daemon threads**.
+- Child threads **inherit** the daemon status of their parent.
+
+---
+
+### 💡 One-Line Definition
+
+> A **daemon thread** is a low-priority background helper thread that the JVM **automatically terminates** when all user threads have finished — it exists only to **serve** user threads and never keeps the program alive on its own.
 
 ---
 
