@@ -7,6 +7,8 @@
 1. [Introduction to Multithreading](#1-introduction-to-multithreading)
 2. [Difference Between Process vs Thread](#2-difference-between-process-and-thread)
 3. [Thread Life Cycle in Java](#3-thread-life-cycle-in-java)
+4. [Different Cases of Executing Threads in Java](#4-different-cases-of-executing-threads-in-java)
+5. [Java Thread Class Methods](#5-java-thread-class-methods)
 
 ---
 
@@ -825,5 +827,1161 @@ t.start();
 ### 💡 One-Line Definition
 
 > The **thread life cycle** describes the journey of a thread from **creation** (New) → **readiness** (Runnable) → **execution** (Running) → optionally **pausing** (Waiting / Timed Waiting) → and finally **completion** (Terminated).
+
+---
+
+## 4. Different Cases of Executing Threads in Java
+
+Now that we know **how to create threads** and understand the **thread life cycle**, let's look at the different ways threads and tasks can be combined in Java.
+
+There are **four main cases** based on the number of **tasks** and the number of **threads** doing the work:
+
+```text
+                         ┌─────────────────────────────────────────┐
+                         │   THREAD × TASK COMBINATIONS            │
+                         └─────────────────────────────────────────┘
+
+   ┌───────────────────────────┐   ┌───────────────────────────┐
+   │ Case 1                   │   │ Case 2                   │
+   │ 1 Task  ←  1 Thread      │   │ 1 Task  ←  Many Threads  │
+   │ (Simplest scenario)      │   │ (Shared work)            │
+   └───────────────────────────┘   └───────────────────────────┘
+
+   ┌───────────────────────────┐   ┌───────────────────────────┐
+   │ Case 3                   │   │ Case 4                   │
+   │ Many Tasks ← Many Threads│   │ Many Tasks ← 1 Thread    │
+   │ (True multithreading)    │   │ (Sequential execution)   │
+   └───────────────────────────┘   └───────────────────────────┘
+```
+
+Let's explore each case with a simple example.
+
+---
+
+### Case 1 — Performing a Single Task from a Single Thread
+
+#### 📖 What does this mean?
+
+One thread performs **one task**. This is the simplest and most straightforward way to use threads. You create a single thread, give it one job, and it executes that job from start to finish.
+
+> Think of it like hiring **one person** to do **one job** — say, painting a wall. They start, they finish, done.
+
+```text
+   Thread-1:  ┌──────────────────────┐
+              │   Task A (printing)  │
+              └──────────────────────┘
+
+   One thread, one task — simple!
+```
+
+#### 💻 Code Example
+
+```java
+class MyThread extends Thread {
+
+    @Override
+    public void run() {
+        // Single task: print numbers 1 to 5
+        for (int i = 1; i <= 5; i++) {
+            System.out.println("Task - " + i);
+        }
+    }
+}
+
+public class SingleTaskSingleThread {
+    public static void main(String[] args) {
+        MyThread t1 = new MyThread();
+        t1.start();  // One thread performs one task
+    }
+}
+```
+
+#### 📤 Output
+
+```text
+Task - 1
+Task - 2
+Task - 3
+Task - 4
+Task - 5
+```
+
+#### 🧠 Explanation
+
+- We created **one thread** (`t1`) by extending the `Thread` class.
+- That thread has **one task** — printing numbers 1 to 5.
+- When `t1.start()` is called, the thread enters the Runnable state, the CPU picks it up, and the `run()` method executes sequentially.
+- This is the most basic case. There is **no concurrency** here — just one thread doing one job.
+
+---
+
+### Case 2 — Performing a Single Task from Multiple Threads
+
+#### 📖 What does this mean?
+
+Multiple threads all perform the **same task**. Each thread independently runs the same `run()` method. This is useful when you want the same job to run more than once at the same time.
+
+> Think of it like hiring **three painters** to each paint **the same type of wall**. They all do the same work, but in parallel.
+
+```text
+   Thread-1:  ┌──────────────────────┐
+              │   Task A (printing)  │
+              └──────────────────────┘
+   Thread-2:  ┌──────────────────────┐
+              │   Task A (printing)  │
+              └──────────────────────┘
+   Thread-3:  ┌──────────────────────┐
+              │   Task A (printing)  │
+              └──────────────────────┘
+
+   Three threads, same task!
+```
+
+#### 💻 Code Example
+
+```java
+class MyThread extends Thread {
+
+    @Override
+    public void run() {
+        // Same single task for every thread
+        for (int i = 1; i <= 3; i++) {
+            System.out.println(Thread.currentThread().getName() + " - Task - " + i);
+        }
+    }
+}
+
+public class SingleTaskMultipleThreads {
+    public static void main(String[] args) {
+        MyThread t1 = new MyThread();
+        MyThread t2 = new MyThread();
+        MyThread t3 = new MyThread();
+
+        t1.start();  // Thread-0 runs the task
+        t2.start();  // Thread-1 runs the same task
+        t3.start();  // Thread-2 runs the same task
+    }
+}
+```
+
+#### 📤 Output (order may vary due to thread scheduling)
+
+```text
+Thread-0 - Task - 1
+Thread-1 - Task - 1
+Thread-0 - Task - 2
+Thread-2 - Task - 1
+Thread-1 - Task - 2
+Thread-0 - Task - 3
+Thread-2 - Task - 2
+Thread-1 - Task - 3
+Thread-2 - Task - 3
+```
+
+#### 🧠 Explanation
+
+- We created **three thread objects** (`t1`, `t2`, `t3`) from the **same class** `MyThread`.
+- All three share the **same `run()` method** — so they perform the **same task**.
+- When `start()` is called on each, the JVM creates three separate threads that **run concurrently**.
+- The output order is **not fixed** because the thread scheduler decides which thread gets CPU time and when. This is a great example of **non-deterministic behavior** in multithreading.
+
+> ⚠️ **Notice:** Each thread has its own execution. They don't wait for each other — they all run independently.
+
+---
+
+### Case 3 — Performing Multiple Tasks from Multiple Threads
+
+#### 📖 What does this mean?
+
+Each thread performs a **different task**. This is the most common use of multithreading in real-world applications — different threads doing different jobs at the same time.
+
+> Think of it like a **restaurant kitchen**: one chef chops vegetables, another grills meat, and a third prepares dessert. Everyone is working at the same time, but on **different things**.
+
+```text
+   Thread-1:  ┌──────────────────────┐
+              │   Task A (printing)  │
+              └──────────────────────┘
+   Thread-2:  ┌──────────────────────┐
+              │   Task B (counting)  │
+              └──────────────────────┘
+
+   Two threads, two different tasks!
+```
+
+#### 💻 Code Example
+
+```java
+class TaskA extends Thread {
+
+    @Override
+    public void run() {
+        // Task A: Print greetings
+        for (int i = 1; i <= 3; i++) {
+            System.out.println("Task A - Hello " + i);
+        }
+    }
+}
+
+class TaskB extends Thread {
+
+    @Override
+    public void run() {
+        // Task B: Print numbers
+        for (int i = 1; i <= 3; i++) {
+            System.out.println("Task B - Count " + i);
+        }
+    }
+}
+
+public class MultipleTasksMultipleThreads {
+    public static void main(String[] args) {
+        TaskA t1 = new TaskA();
+        TaskB t2 = new TaskB();
+
+        t1.start();  // Thread-0 runs Task A
+        t2.start();  // Thread-1 runs Task B
+    }
+}
+```
+
+#### 📤 Output (order may vary due to thread scheduling)
+
+```text
+Task A - Hello 1
+Task B - Count 1
+Task A - Hello 2
+Task B - Count 2
+Task A - Hello 3
+Task B - Count 3
+```
+
+#### 🧠 Explanation
+
+- We created **two different classes** (`TaskA` and `TaskB`), each with its own `run()` method — meaning each thread does a **different task**.
+- `t1` runs Task A (printing greetings) and `t2` runs Task B (printing counts).
+- Both threads start at roughly the same time and run **concurrently**.
+- Again, the exact order of output lines is **not guaranteed** — the thread scheduler interleaves them.
+- This is **true multithreading** — different workers doing different jobs simultaneously.
+
+---
+
+### Case 4 — Performing Multiple Tasks from a Single Thread
+
+#### 📖 What does this mean?
+
+A single thread performs **multiple tasks one after another**. Since there is only one thread, the tasks cannot run at the same time — they execute **sequentially**. The second task starts only after the first one finishes.
+
+> Think of it like **one person** doing the laundry **and then** cooking dinner. They can't do both at once — they finish one job, then move on to the next.
+
+```text
+   Thread-1:  ┌──────────────────────┐┌──────────────────────┐
+              │   Task A (printing)  ││   Task B (counting)  │
+              └──────────────────────┘└──────────────────────┘
+
+   One thread, two tasks — done one after another!
+```
+
+#### 💻 Code Example
+
+```java
+class MultiTask extends Thread {
+
+    @Override
+    public void run() {
+        // Task A: Print greetings
+        for (int i = 1; i <= 3; i++) {
+            System.out.println("Task A - Hello " + i);
+        }
+
+        // Task B: Print numbers (starts only after Task A finishes)
+        for (int i = 1; i <= 3; i++) {
+            System.out.println("Task B - Count " + i);
+        }
+    }
+}
+
+public class MultipleTasksSingleThread {
+    public static void main(String[] args) {
+        MultiTask t1 = new MultiTask();
+        t1.start();  // One thread runs both tasks sequentially
+    }
+}
+```
+
+#### 📤 Output
+
+```text
+Task A - Hello 1
+Task A - Hello 2
+Task A - Hello 3
+Task B - Count 1
+Task B - Count 2
+Task B - Count 3
+```
+
+#### 🧠 Explanation
+
+- We created **one thread** (`t1`) that has **two tasks** written inside its `run()` method.
+- Since there is only **one thread**, it cannot run both tasks at the same time. It finishes Task A completely, then moves on to Task B.
+- The output is **always in the same order** — Task A first, then Task B. There is **no interleaving** because there is no concurrency.
+- This is essentially **sequential execution inside a thread** — the thread does multiple things, but one at a time.
+
+> 💡 **Key Takeaway:** Having multiple tasks doesn't automatically mean they run in parallel. If there's only **one thread**, everything happens **one after another**.
+
+---
+
+### 📊 All Four Cases at a Glance
+
+| Case | Threads | Tasks | Execution Style | Real-Life Analogy |
+|---|---|---|---|---|
+| **Case 1** | 1 Thread | 1 Task | Sequential | One painter paints one wall |
+| **Case 2** | Multiple Threads | 1 Task (same) | Concurrent | Three painters each paint the same type of wall |
+| **Case 3** | Multiple Threads | Multiple Tasks (different) | Concurrent | One chef chops, another grills, another bakes |
+| **Case 4** | 1 Thread | Multiple Tasks | Sequential | One person does laundry, then cooks dinner |
+
+---
+
+### 💡 One-Line Definition
+
+> The way tasks execute depends on **how many threads** carry them out — **multiple threads** enable **concurrent execution**, while a **single thread** always executes tasks **one after another**.
+
+---
+
+## 5. Java Thread Class Methods
+
+### What is `Thread` class?
+
+In Java, the `Thread` class is used to create and manage threads.
+
+A **thread** is a small worker inside a program that can execute a task independently.
+
+Simple analogy:
+
+```text
+Java Program = Company
+Thread       = Worker
+run()        = Work assigned to worker
+start()      = Tell worker to start working
+```
+
+The `Thread` class is present in the `java.lang` package, so we do not need to import it manually.
+
+---
+
+### Basic Declaration
+
+```java
+public class Thread extends Object implements Runnable
+```
+
+Meaning:
+
+- `Thread` is a class.
+- It implements the `Runnable` interface.
+- Because of `Runnable`, the `Thread` class has the `run()` method.
+
+---
+
+## Thread Class Constructors
+
+Constructors are used to create `Thread` objects.
+
+### Common Constructors
+
+| Constructor | Simple Meaning |
+|---|---|
+| `Thread()` | Creates a new thread object without giving any task or name. |
+| `Thread(Runnable target)` | Creates a thread object and gives it a task to execute. |
+| `Thread(String name)` | Creates a thread object with a specific name. |
+| `Thread(Runnable target, String name)` | Creates a thread with both task and name. |
+| `Thread(ThreadGroup group, Runnable target)` | Creates a thread inside a specific thread group with a task. |
+| `Thread(ThreadGroup group, String name)` | Creates a thread inside a specific thread group with a name. |
+| `Thread(ThreadGroup group, Runnable target, String name)` | Creates a thread inside a group with task and name. |
+| `Thread(ThreadGroup group, Runnable target, String name, long stackSize)` | Creates a thread with group, task, name, and stack size. Usually not needed for beginners. |
+
+---
+
+### Simple Constructor Example
+
+```java
+class MyTask implements Runnable {
+    public void run() {
+        System.out.println("Task is running");
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Thread t1 = new Thread(new MyTask());
+        t1.start();
+    }
+}
+```
+
+Explanation:
+
+```text
+new MyTask()       = task
+new Thread(task)   = worker created for that task
+t1.start()         = worker starts the task
+```
+
+---
+
+## Important Methods of Thread Class
+
+We can divide Thread class methods into simple categories:
+
+1. Basic methods
+2. Naming methods
+3. Daemon thread methods
+4. Priority methods
+5. Execution control methods
+6. Interrupting methods
+7. Deprecated methods
+
+---
+
+## 5.1. Basic Methods
+
+### `run()`
+
+The `run()` method contains the actual task of the thread.
+
+```java
+public void run()
+```
+
+Example:
+
+```java
+class MyThread extends Thread {
+    public void run() {
+        System.out.println("Thread task is running");
+    }
+}
+```
+
+Simple meaning:
+
+```text
+run() = task/job of the thread
+```
+
+Important point:
+
+If we call `run()` directly, it behaves like a normal method call. It does not start a new thread.
+
+---
+
+### `start()`
+
+The `start()` method starts a new thread.
+
+```java
+public synchronized void start()
+```
+
+Example:
+
+```java
+class MyThread extends Thread {
+    public void run() {
+        System.out.println("Thread is running");
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        MyThread t1 = new MyThread();
+        t1.start();
+    }
+}
+```
+
+Simple meaning:
+
+```text
+start() = start a new worker
+```
+
+Important point:
+
+```text
+start() internally calls run()
+```
+
+So always use `start()` when you want a new thread.
+
+---
+
+### `currentThread()`
+
+The `currentThread()` method returns the currently running thread.
+
+```java
+public static native Thread currentThread()
+```
+
+Example:
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Thread t = Thread.currentThread();
+        System.out.println(t.getName());
+    }
+}
+```
+
+Output:
+
+```text
+main
+```
+
+Simple meaning:
+
+```text
+currentThread() = Which thread is running right now?
+```
+
+---
+
+### `isAlive()`
+
+The `isAlive()` method checks whether a thread is still alive or running.
+
+```java
+public final native boolean isAlive()
+```
+
+Example:
+
+```java
+class MyThread extends Thread {
+    public void run() {
+        System.out.println("Thread running");
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        MyThread t1 = new MyThread();
+        System.out.println(t1.isAlive());
+
+        t1.start();
+        System.out.println(t1.isAlive());
+    }
+}
+```
+
+Possible output:
+
+```text
+false
+true
+```
+
+Simple meaning:
+
+```text
+isAlive() = Is this thread still active?
+```
+
+---
+
+## 5.2. Naming Methods
+
+Naming methods are used to give names to threads and get thread names.
+
+---
+
+### `getName()`
+
+The `getName()` method returns the name of a thread.
+
+```java
+public final String getName()
+```
+
+Example:
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Thread t1 = new Thread();
+        System.out.println(t1.getName());
+    }
+}
+```
+
+Possible output:
+
+```text
+Thread-0
+```
+
+Simple meaning:
+
+```text
+getName() = Tell me the thread name
+```
+
+---
+
+### `setName(String name)`
+
+The `setName()` method changes the name of a thread.
+
+```java
+public final synchronized void setName(String name)
+```
+
+Example:
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Thread t1 = new Thread();
+        t1.setName("Worker-1");
+        System.out.println(t1.getName());
+    }
+}
+```
+
+Output:
+
+```text
+Worker-1
+```
+
+Simple meaning:
+
+```text
+setName() = Give a name to the thread
+```
+
+---
+
+## 5.3. Daemon Thread Methods
+
+A **daemon thread** is a background helper thread.
+
+Simple analogy:
+
+```text
+Normal thread = Main worker
+Daemon thread = Background helper
+```
+
+Example of background helper work:
+
+- Garbage collection
+- Monitoring
+- Background cleanup
+
+Important:
+
+When all normal user threads finish, daemon threads do not keep the JVM alive.
+
+---
+
+### `isDaemon()`
+
+The `isDaemon()` method checks whether a thread is daemon or not.
+
+```java
+public final boolean isDaemon()
+```
+
+Example:
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Thread t1 = new Thread();
+        System.out.println(t1.isDaemon());
+    }
+}
+```
+
+Output:
+
+```text
+false
+```
+
+Simple meaning:
+
+```text
+isDaemon() = Is this thread a background helper thread?
+```
+
+---
+
+### `setDaemon(boolean on)`
+
+The `setDaemon()` method marks a thread as daemon or non-daemon.
+
+```java
+public final void setDaemon(boolean on)
+```
+
+Example:
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Thread t1 = new Thread();
+        t1.setDaemon(true);
+        t1.start();
+    }
+}
+```
+
+Important point:
+
+`setDaemon(true)` must be called before `start()`.
+
+Simple meaning:
+
+```text
+setDaemon(true) = Make this thread a background helper
+```
+
+---
+
+## 5.4. Priority-Based Methods
+
+Every thread has a priority.
+
+Thread priority tells the thread scheduler which thread is more important, but it does not guarantee exact execution order.
+
+Java thread priority range:
+
+```text
+Minimum priority = 1
+Normal priority  = 5
+Maximum priority = 10
+```
+
+Java constants:
+
+```java
+Thread.MIN_PRIORITY   // 1
+Thread.NORM_PRIORITY  // 5
+Thread.MAX_PRIORITY   // 10
+```
+
+---
+
+### `getPriority()`
+
+The `getPriority()` method returns the priority of a thread.
+
+```java
+public final int getPriority()
+```
+
+Example:
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Thread t1 = new Thread();
+        System.out.println(t1.getPriority());
+    }
+}
+```
+
+Output:
+
+```text
+5
+```
+
+Simple meaning:
+
+```text
+getPriority() = Tell me the thread priority
+```
+
+---
+
+### `setPriority(int newPriority)`
+
+The `setPriority()` method changes the priority of a thread.
+
+```java
+public final void setPriority(int newPriority)
+```
+
+Example:
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Thread t1 = new Thread();
+        t1.setPriority(Thread.MAX_PRIORITY);
+        System.out.println(t1.getPriority());
+    }
+}
+```
+
+Output:
+
+```text
+10
+```
+
+Simple meaning:
+
+```text
+setPriority() = Change importance level of thread
+```
+
+Important point:
+
+Priority gives a hint to the scheduler, but it does not guarantee that the highest priority thread will always run first.
+
+---
+
+## 5.5. Methods That Pause or Control Thread Execution
+
+These methods are used to pause, wait, or allow other threads to run.
+
+---
+
+### `sleep(long millis)`
+
+The `sleep()` method pauses the current thread for a given time.
+
+```java
+public static native void sleep(long millis) throws InterruptedException
+```
+
+Example:
+
+```java
+public class Main {
+    public static void main(String[] args) throws InterruptedException {
+        System.out.println("Before sleep");
+        Thread.sleep(1000);
+        System.out.println("After sleep");
+    }
+}
+```
+
+Output:
+
+```text
+Before sleep
+After sleep
+```
+
+There will be a delay of around 1 second between both lines.
+
+Simple meaning:
+
+```text
+sleep() = Take rest for some time
+```
+
+---
+
+### `yield()`
+
+The `yield()` method gives a hint to the thread scheduler that the current thread is ready to pause and allow another thread to run.
+
+```java
+public static native void yield()
+```
+
+Simple meaning:
+
+```text
+yield() = I can wait; let another thread run if needed
+```
+
+Important point:
+
+`yield()` does not guarantee that another thread will definitely run immediately.
+
+---
+
+### `join()`
+
+The `join()` method makes one thread wait until another thread finishes.
+
+```java
+public final void join() throws InterruptedException
+```
+
+Example:
+
+```java
+class MyThread extends Thread {
+    public void run() {
+        for (int i = 1; i <= 3; i++) {
+            System.out.println(i);
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) throws InterruptedException {
+        MyThread t1 = new MyThread();
+        t1.start();
+
+        t1.join();
+
+        System.out.println("Main thread continues after t1 finishes");
+    }
+}
+```
+
+Simple meaning:
+
+```text
+join() = Wait until this thread completes
+```
+
+Analogy:
+
+```text
+Main thread says: I will wait until Worker-1 completes the job.
+```
+
+---
+
+## 5.6. Interrupting Methods
+
+Interrupting means requesting a thread to stop waiting, sleeping, or blocking.
+
+Important:
+
+`interrupt()` does not forcefully kill a thread. It sends a request/signal to interrupt the thread.
+
+---
+
+### `interrupt()`
+
+The `interrupt()` method interrupts a thread.
+
+```java
+public void interrupt()
+```
+
+Example:
+
+```java
+class MyThread extends Thread {
+    public void run() {
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            System.out.println("Thread was interrupted");
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        MyThread t1 = new MyThread();
+        t1.start();
+        t1.interrupt();
+    }
+}
+```
+
+Simple meaning:
+
+```text
+interrupt() = Send interruption request to thread
+```
+
+---
+
+### `isInterrupted()`
+
+The `isInterrupted()` method checks whether a specific thread has been interrupted.
+
+```java
+public boolean isInterrupted()
+```
+
+Simple meaning:
+
+```text
+isInterrupted() = Has this thread received an interrupt request?
+```
+
+---
+
+### `interrupted()`
+
+The `interrupted()` method checks whether the current thread has been interrupted.
+
+```java
+public static boolean interrupted()
+```
+
+Important point:
+
+`interrupted()` checks the current thread and clears the interrupted status after checking.
+
+Simple meaning:
+
+```text
+interrupted() = Is current thread interrupted? Then clear the interrupt flag.
+```
+
+---
+
+## 5.7. Deprecated Methods
+
+Some old Thread methods are deprecated because they are unsafe.
+
+Avoid using these methods in modern Java programs.
+
+| Deprecated Method | Why Avoid It? |
+|---|---|
+| `stop()` | It can stop a thread suddenly and leave shared data in an inconsistent state. |
+| `suspend()` | It can pause a thread while holding a lock, causing deadlock. |
+| `resume()` | It was used with `suspend()`, so it can also lead to unsafe behavior. |
+| `destroy()` | It was never properly implemented and should not be used. |
+
+Simple meaning:
+
+```text
+Deprecated = Old method, not recommended to use
+```
+
+Instead of these methods, use safer techniques like:
+
+- `interrupt()`
+- boolean flag
+- ExecutorService shutdown methods
+
+---
+
+### Quick Summary Table
+
+| Method | Category | Simple Meaning |
+|---|---|---|
+| `run()` | Basic | Contains the task of the thread. |
+| `start()` | Basic | Starts a new thread and internally calls `run()`. |
+| `currentThread()` | Basic | Returns the currently running thread. |
+| `isAlive()` | Basic | Checks whether the thread is still active. |
+| `getName()` | Naming | Gets the name of the thread. |
+| `setName()` | Naming | Changes the name of the thread. |
+| `isDaemon()` | Daemon | Checks whether the thread is daemon. |
+| `setDaemon()` | Daemon | Marks a thread as daemon or non-daemon. |
+| `getPriority()` | Priority | Gets the priority of the thread. |
+| `setPriority()` | Priority | Changes the priority of the thread. |
+| `sleep()` | Execution control | Pauses the current thread for some time. |
+| `yield()` | Execution control | Gives chance to other threads. |
+| `join()` | Execution control | Waits for another thread to finish. |
+| `interrupt()` | Interrupting | Sends interrupt request to a thread. |
+| `isInterrupted()` | Interrupting | Checks interrupt status of a specific thread. |
+| `interrupted()` | Interrupting | Checks and clears interrupt status of current thread. |
+
+---
+
+### Most Important Points to Remember
+
+#### 1. Use `start()`, not `run()`
+
+```java
+t1.start();
+```
+
+This creates a new thread.
+
+```java
+t1.run();
+```
+
+This behaves like a normal method call.
+
+---
+
+#### 2. One thread can be started only once
+
+```java
+Thread t1 = new Thread();
+t1.start();
+t1.start(); // Error: IllegalThreadStateException
+```
+
+A thread object cannot be restarted after it has already been started.
+
+---
+
+#### 3. Thread execution order is not fixed
+
+If multiple threads are running, output order may change every time.
+
+Why?
+
+Because the thread scheduler decides which thread gets CPU time.
+
+---
+
+#### 4. Avoid deprecated methods
+
+Do not use:
+
+```java
+stop();
+suspend();
+resume();
+destroy();
+```
+
+Use safe approaches like `interrupt()` instead.
+
+---
+
+### Small Complete Example
+
+```java
+class MyThread extends Thread {
+    public void run() {
+        System.out.println("Running thread: " + Thread.currentThread().getName());
+    }
+}
+
+public class Main {
+    public static void main(String[] args) throws InterruptedException {
+        MyThread t1 = new MyThread();
+
+        t1.setName("Worker-1");
+        t1.setPriority(Thread.MAX_PRIORITY);
+
+        System.out.println("Before start: " + t1.isAlive());
+
+        t1.start();
+        t1.join();
+
+        System.out.println("After finish: " + t1.isAlive());
+    }
+}
+```
+
+Possible output:
+
+```text
+Before start: false
+Running thread: Worker-1
+After finish: false
+```
+
+---
+
+### 💡 One-Line Definition
+
+> The `Thread` class provides methods to create, start, pause, name, prioritize, join, interrupt, and check the status of threads. In simple words: Thread methods help us control workers inside a Java program.
 
 ---
