@@ -1241,6 +1241,10 @@ We can divide Thread class methods into simple categories:
 7. Deprecated methods
 
 ---
+[Thread Class Methods](threadimg1.png)
+[Thread Class Methods](threadimg2.png)
+[Thread Class Methods](threadimg3.png)
+
 
 ## 5.1. Basic Methods
 
