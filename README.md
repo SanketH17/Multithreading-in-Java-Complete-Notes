@@ -3407,38 +3407,59 @@ Internally, `join(long ms)` is implemented using `wait()`, which **releases the 
 ## Example — Joining Multiple Threads
 
 ```java
-class MyThread extends Thread {
-
+class Medical extends Thread {
     public void run() {
-
-        for (int i = 1; i <= 3; i++) {
-            System.out.println(getName() + " : " + i);
+        try {
+            System.out.println("Medical Started...");
+            Thread.sleep(3000);
+            System.out.println("Medical Closed");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 }
 
-public class Main {
+class TestDriver extends Thread {
+    public void run() {
+        try {
+            System.out.println("Test drive starts");
+            Thread.sleep(5000);
+            System.out.println("Test drive completed");
+        } catch (InterruptedException e) {
+            System.out.println(e);
+        }
+    }
+}
 
+class OfficerSign extends Thread {
+    public void run() {
+        try {
+            System.out.println("Officer takes the file");
+            Thread.sleep(3000);
+            System.out.println("Officer work completed");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+public class Test8 {
     public static void main(String[] args) throws InterruptedException {
+        Medical medical = new Medical();
+        TestDriver td = new TestDriver();
+        OfficerSign sign = new OfficerSign();
 
-        MyThread t1 = new MyThread();
-        MyThread t2 = new MyThread();
-        MyThread t3 = new MyThread();
+        medical.start();
+        medical.join();
 
-        t1.setName("Thread-1");
-        t2.setName("Thread-2");
-        t3.setName("Thread-3");
+        td.start();
+        td.join();
 
-        t1.start();
-        t1.join(); // Main waits for t1
+        sign.start();
+        sign.join();
 
-        t2.start();
-        t2.join(); // Main waits for t2
-
-        t3.start();
-        t3.join(); // Main waits for t3
-
-        System.out.println("All threads completed");
+        System.out.println("All tasks completed...!!!");
     }
 }
 ```
@@ -3446,35 +3467,52 @@ public class Main {
 ### Output
 
 ```text
-Thread-1 : 1
-Thread-1 : 2
-Thread-1 : 3
-Thread-2 : 1
-Thread-2 : 2
-Thread-2 : 3
-Thread-3 : 1
-Thread-3 : 2
-Thread-3 : 3
-All threads completed
+Medical Started...
+Medical Closed
+Test drive starts
+Test drive completed
+Officer takes the file
+Officer work completed
+All tasks completed...!!!
 ```
 
+### How It Works
+
 ```text
-Without join()                     With join()
-┌──────────────────────┐           ┌──────────────────────┐
-│ Threads run in any   │           │ Threads run one      │
-│ order (interleaved)  │           │ after another         │
-│                      │           │                      │
-│ Thread-1 : 1         │           │ Thread-1 : 1         │
-│ Thread-3 : 1         │           │ Thread-1 : 2         │
-│ Thread-2 : 1         │           │ Thread-1 : 3         │
-│ Thread-1 : 2         │           │ Thread-2 : 1         │
-│ Thread-3 : 2         │           │ Thread-2 : 2         │
-│ ...                  │           │ Thread-2 : 3         │
-│ (unpredictable)      │           │ Thread-3 : 1         │
-│                      │           │ ...                  │
-│                      │           │ All threads completed│
-└──────────────────────┘           └──────────────────────┘
+Main Thread         Medical          TestDriver        OfficerSign
+    │
+    │ medical.start()
+    │──────────────▶│
+    │ medical.join() │
+    ▼                │
+  WAITING            │ (3 sec)
+    .                ▼
+    .             TERMINATED
+    │◀──────────────┘
+    │
+    │ td.start()
+    │───────────────────────────▶│
+    │ td.join()                  │
+    ▼                            │
+  WAITING                        │ (5 sec)
+    .                            ▼
+    .                         TERMINATED
+    │◀──────────────────────────┘
+    │
+    │ sign.start()
+    │──────────────────────────────────────────▶│
+    │ sign.join()                               │
+    ▼                                           │
+  WAITING                                       │ (3 sec)
+    .                                           ▼
+    .                                        TERMINATED
+    │◀─────────────────────────────────────────┘
+    │
+    ▼
+  "All tasks completed...!!!"
 ```
+
+Each step **must finish** before the next one begins — just like a real-world driving license process where Medical → Test Drive → Officer Sign happens in order.
 
 > **Interview Point:** Using `join()` after each `start()` forces **sequential execution** of threads. The next thread starts only after the previous one finishes.
 
