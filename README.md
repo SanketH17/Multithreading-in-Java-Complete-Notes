@@ -2708,11 +2708,9 @@ Each thread independently sleeps for 2 seconds after its own print. Since all th
 
 ---
 
----
-
 ### `yield()`
 
-## Definition
+## Interview Definition
 
 > **`Thread.yield()` is a static method that gives a hint to the Thread Scheduler that the currently executing thread is willing to pause temporarily and allow other runnable threads of the same or higher priority to execute. However, it does not guarantee that another thread will run immediately.**
 
@@ -2827,7 +2825,7 @@ Its behavior depends on the operating system and JVM implementation.
 
 ---
 
-# Example 1: Basic `yield()`
+## Example 1 — Basic `yield()`
 
 ```java
 class MyThread extends Thread {
@@ -2898,7 +2896,7 @@ Calling `yield()` **does not guarantee** that another thread will execute.
 
 ---
 
-# Example 2: `yield()` in the Main Thread
+## Example 2 — `yield()` in the Main Thread
 
 ```java
 class MyThread extends Thread {
@@ -2964,7 +2962,7 @@ The scheduler may ignore the `yield()` request.
 
 ---
 
-# Example 3: Only One Runnable Thread
+## Example 3 — Only One Runnable Thread
 
 ```java
 public class Main {
@@ -2999,7 +2997,7 @@ Since no other runnable thread exists,
 
 ---
 
-# Example 4: High-Priority Thread Calling `yield()`
+## Example 4 — High-Priority Thread Calling `yield()`
 
 ```java
 class MyThread extends Thread {
@@ -3048,9 +3046,9 @@ Again,
 
 ---
 
-# Important Points
+## Important Points
 
-## 1. `yield()` is a Static Method
+### 1. `yield()` is a Static Method
 
 ```java
 public static native void yield()
@@ -3064,7 +3062,7 @@ Thread.yield();
 
 ---
 
-## 2. `yield()` Always Affects the Current Thread
+### 2. `yield()` Always Affects the Current Thread
 
 It pauses **only the currently executing thread**.
 
@@ -3072,7 +3070,7 @@ It does **not** affect any other thread.
 
 ---
 
-## 3. `yield()` Moves the Thread Back to the RUNNABLE State
+### 3. `yield()` Moves the Thread Back to the RUNNABLE State
 
 ```text
 RUNNING
@@ -3088,7 +3086,7 @@ the scheduler decides which thread should execute next.
 
 ---
 
-## 4. `yield()` Does NOT Guarantee a Context Switch
+### 4. `yield()` Does NOT Guarantee a Context Switch
 
 The scheduler may:
 
@@ -3111,7 +3109,7 @@ Thread-2
 
 ---
 
-## 5. `yield()` Does NOT Release Locks
+### 5. `yield()` Does NOT Release Locks
 
 If a thread owns a synchronized lock,
 
@@ -3121,7 +3119,7 @@ The thread continues holding the lock until it exits the synchronized block or m
 
 ---
 
-## 6. `yield()` Does NOT Throw Any Checked Exception
+### 6. `yield()` Does NOT Throw Any Checked Exception
 
 Unlike `sleep()`,
 
@@ -3135,7 +3133,7 @@ No `try-catch` or `throws` declaration is required.
 
 ---
 
-## 7. `yield()` is Platform Dependent
+### 7. `yield()` is Platform Dependent
 
 Different operating systems and JVM implementations handle `yield()` differently.
 
