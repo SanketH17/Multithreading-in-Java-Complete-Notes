@@ -18,6 +18,7 @@
    - [5.6 Interrupting Methods](#56-interrupting-methods)
    - [5.7 Deprecated Methods](#57-deprecated-methods)
 6. [Synchronization in Java Multithreading](#6-synchronization-in-java-multithreading)
+   - [6.1 Synchronized Block](#61-synchronized-block)
 
 ---
 
@@ -4278,168 +4279,180 @@ Achieved by methods of the **Object class**:
 
 ---
 
-## Simple Example — Problem WITHOUT Synchronization
+## Example — Problem WITHOUT Synchronization
 
-Two threads are trying to **add to the same counter** at the same time.
+Two customers (**Rahul** and **Amit**) are trying to **withdraw from the same bank account** at the same time.
 
 ```java
-class Counter {
+class BankAccount {
+    private int balance = 1000;
 
-    int count = 0;
+    // NOT synchronized — both threads can enter at the same time
+    public void withdraw(int amount) {
+        if (balance >= amount) {
+            System.out.println(Thread.currentThread().getName() + " is withdrawing Rs " + amount);
 
-    public void increment() {
-        count++; // Not thread-safe
-    }
-}
-
-class MyThread extends Thread {
-
-    Counter counter;
-
-    MyThread(Counter counter) {
-        this.counter = counter;
-    }
-
-    public void run() {
-        for (int i = 0; i < 1000; i++) {
-            counter.increment();
+            balance = balance - amount;
+            System.out.println("Remaining Balance : " + balance);
+        } else {
+            System.out.println(Thread.currentThread().getName() + " withdrawing " + amount + " : Insufficient Balance");
         }
     }
 }
 
-public class Main {
+class Customer extends Thread {
+    private BankAccount account;
+    int amount;
 
-    public static void main(String[] args) throws InterruptedException {
+    public Customer(BankAccount account, String name, int amount) {
+        super(name);
+        this.account = account;
+        this.amount = amount;
+    }
 
-        Counter counter = new Counter(); // Shared object
+    public void run() {
+        account.withdraw(amount);
+    }
+}
 
-        MyThread t1 = new MyThread(counter);
-        MyThread t2 = new MyThread(counter);
+public class Test3 {
+    public static void main(String[] args) {
+        BankAccount account = new BankAccount(); // Shared account
 
-        t1.start();
-        t2.start();
+        Customer c1 = new Customer(account, "Rahul", 700);
+        Customer c2 = new Customer(account, "Amit", 400);
 
-        t1.join();
-        t2.join();
-
-        System.out.println("Final Count : " + counter.count);
+        c1.start();
+        c2.start();
     }
 }
 ```
 
-### Expected Output
+### Output (without synchronization)
 
 ```text
-Final Count : 2000
+Amit is withdrawing Rs 400
+Rahul is withdrawing Rs 700
+Remaining Balance : -100
+Remaining Balance : 600
 ```
 
-### Actual Output (varies every run)
+### Why is This Wrong?
 
 ```text
-Final Count : 1856
-Final Count : 1943
-Final Count : 1781
+Account Balance = ₹1000
+
+Rahul wants to withdraw ₹700
+Amit wants to withdraw ₹400
+Total = ₹1100 > ₹1000 ← NOT enough for both!
+
+But BOTH got in because there was no lock:
+
+Amit reads balance = 1000  → 1000 >= 400 ✅ → enters if block
+Rahul reads balance = 1000 → 1000 >= 700 ✅ → enters if block (at the same time!)
+
+Rahul: balance = 1000 - 700 = 300
+Amit:  balance = 1000 - 400 = 600  (overwrites Rahul's update!)
+
+OR worse:
+
+Amit:  balance = 300 - 400 = -100  ← NEGATIVE BALANCE ❌
 ```
 
-### Why?
-
-Because `count++` is **NOT an atomic operation**. Internally, it does 3 things:
-
-```text
-1. READ   → Read current value of count
-2. UPDATE → Add 1 to it
-3. WRITE  → Write the new value back
-```
-
-When two threads do this at the **same time**, some updates get **lost**:
-
-```text
-Thread-1: READ count = 5
-Thread-2: READ count = 5      ← reads BEFORE Thread-1 writes
-Thread-1: WRITE count = 6
-Thread-2: WRITE count = 6     ← overwrites Thread-1's update!
-
-Result: count = 6 instead of 7  ❌
-```
+Both threads **read the balance before either one updated it** → Both passed the `if` check → Balance went **negative**.
 
 ---
 
 ## Solution — WITH Synchronization
 
-Just add the `synchronized` keyword to the method:
+Just add the `synchronized` keyword to the `withdraw()` method:
 
 ```java
-class Counter {
+class BankAccount {
+    private int balance = 1000;
 
-    int count = 0;
+    // synchronized — only ONE thread can enter at a time
+    public synchronized void withdraw(int amount) {
+        if (balance >= amount) {
+            System.out.println(Thread.currentThread().getName() + " is withdrawing Rs " + amount);
 
-    public synchronized void increment() { // Only ONE thread can enter at a time
-        count++;
-    }
-}
-
-class MyThread extends Thread {
-
-    Counter counter;
-
-    MyThread(Counter counter) {
-        this.counter = counter;
-    }
-
-    public void run() {
-        for (int i = 0; i < 1000; i++) {
-            counter.increment();
+            balance = balance - amount;
+            System.out.println("Remaining Balance : " + balance);
+        } else {
+            System.out.println(Thread.currentThread().getName() + " withdrawing " + amount + " : Insufficient Balance");
         }
     }
 }
 
-public class Main {
+class Customer extends Thread {
+    private BankAccount account;
+    int amount;
 
-    public static void main(String[] args) throws InterruptedException {
+    public Customer(BankAccount account, String name, int amount) {
+        super(name);
+        this.account = account;
+        this.amount = amount;
+    }
 
-        Counter counter = new Counter(); // Shared object
+    public void run() {
+        account.withdraw(amount);
+    }
+}
 
-        MyThread t1 = new MyThread(counter);
-        MyThread t2 = new MyThread(counter);
+public class Test3 {
+    public static void main(String[] args) {
+        BankAccount account = new BankAccount(); // Shared account
 
-        t1.start();
-        t2.start();
+        Customer c1 = new Customer(account, "Rahul", 700);
+        Customer c2 = new Customer(account, "Amit", 400);
 
-        t1.join();
-        t2.join();
-
-        System.out.println("Final Count : " + counter.count);
+        c1.start();
+        c2.start();
     }
 }
 ```
 
-### Output (always correct)
+### Output (with synchronization)
 
 ```text
-Final Count : 2000
+Rahul is withdrawing Rs 700
+Remaining Balance : 300
+Amit withdrawing 400 : Insufficient Balance
 ```
 
 ### What Changed?
 
 ```text
-Before: public void increment()              → Both threads enter at same time ❌
-After:  public synchronized void increment() → Only ONE thread enters at a time ✅
+Before: public void withdraw(...)              → Both threads enter at same time ❌
+After:  public synchronized void withdraw(...)  → Only ONE thread enters at a time ✅
 ```
 
+### How It Works Step by Step
+
 ```text
-┌────────────────────────────────────────────────────┐
-│               synchronized method                  │
-│                                                    │
-│   Thread-1 enters → LOCKS the method              │
-│   Thread-2 arrives → sees LOCK → WAITS            │
-│                                                    │
-│   Thread-1 finishes → UNLOCKS the method          │
-│   Thread-2 enters → LOCKS the method              │
-│   Thread-2 finishes → UNLOCKS                     │
-│                                                    │
-│   Result: count = 2000 ✅ (always correct)        │
-└────────────────────────────────────────────────────┘
+Account Balance = ₹1000
+
+┌────────────────────────────────────────────────────────────────┐
+│                 synchronized withdraw()                        │
+│                                                                │
+│  Rahul enters first → LOCKS the method                        │
+│  Amit arrives → sees LOCK → WAITS outside                     │
+│                                                                │
+│  Rahul: balance(1000) >= 700? ✅ Yes                          │
+│  Rahul: balance = 1000 - 700 = 300                            │
+│  Rahul: prints "Remaining Balance : 300"                      │
+│  Rahul finishes → UNLOCKS the method                          │
+│                                                                │
+│  Amit enters → LOCKS the method                               │
+│  Amit: balance(300) >= 400? ❌ No                             │
+│  Amit: prints "Insufficient Balance"                          │
+│  Amit finishes → UNLOCKS                                      │
+│                                                                │
+│  Final Balance = ₹300 ✅ (correct)                            │
+└────────────────────────────────────────────────────────────────┘
 ```
+
+> **Interview Point:** Without synchronization, both threads passed the balance check because they read the value **before** either one updated it. With `synchronized`, the second thread **waits** until the first thread completes — so it sees the **updated balance** and correctly rejects the withdrawal.
 
 ---
 
@@ -4469,6 +4482,325 @@ After:  public synchronized void increment() → Only ONE thread enters at a tim
 
 ---
 
-> 📝 **Note:** This is an introduction to Synchronization. Detailed topics like **synchronized blocks, static synchronization, inter-thread communication (`wait()`, `notify()`, `notifyAll()`), and deadlock** will be covered in upcoming sections.
+> 📝 **Note:** This is an introduction to Synchronization. Detailed topics like **static synchronization, inter-thread communication (`wait()`, `notify()`, `notifyAll()`), and deadlock** will be covered in upcoming sections.
+
+---
+
+## 6.1. Synchronized Block
+
+### Interview Definition
+
+> **A synchronized block is a block of code that allows only one thread at a time to execute a specific critical section by acquiring the lock of a given object. It is used when only a small part of a method needs synchronization, instead of locking the entire method.**
+
+---          
+
+## Why Do We Need a Synchronized Block?
+
+Sometimes, **only a few lines of a method access shared data**.
+
+Synchronizing the **entire method** would unnecessarily block other threads from executing code that is already thread-safe.
+
+Instead, we synchronize **only the critical section**.
+
+This improves **performance** while still keeping the shared data safe.
+
+```text
+Synchronized Method       vs       Synchronized Block
+┌──────────────────────┐           ┌──────────────────────┐
+│ LOCKS entire method  │           │ LOCKS only critical  │
+│                      │           │ lines                │
+│ 100 lines locked     │           │                      │
+│ Even if only 5 lines │           │ 5 lines locked       │
+│ need protection      │           │ 95 lines run freely  │
+│                      │           │                      │
+│ ❌ Slower            │           │ ✅ Faster            │
+└──────────────────────┘           └──────────────────────┘
+```
+
+---
+
+## Real-Life Analogy
+
+Imagine a classroom with 20 students.
+
+Only **one student can use the whiteboard at a time**.
+
+The rest of the classroom activities (reading, writing, discussing) can happen simultaneously.
+
+```text
+Whole Classroom
+┌──────────────────────────────────────────┐
+│ Reading          ✔ Multiple Students     │
+│ Writing          ✔ Multiple Students     │
+│ Discussion       ✔ Multiple Students     │
+│                                          │
+│ Whiteboard       ❌ Only One Student     │
+└──────────────────────────────────────────┘
+```
+
+The whiteboard is the **critical section**.
+
+Similarly, only the code that modifies shared resources should be synchronized.
+
+---
+
+## Syntax
+
+```java
+synchronized (lockObject) {
+
+    // Critical section
+    // Only ONE thread can execute this at a time
+}
+```
+
+`lockObject` — The object whose **lock** the thread must acquire before entering the block.
+
+---
+
+## Method Synchronization vs Block Synchronization
+
+### Method Synchronization
+
+Entire method is locked.
+
+```java
+public synchronized void increment() {
+
+    // Line 1  ← locked
+    // Line 2  ← locked
+    // Line 3  ← locked
+    count++;   // ← only THIS line needs protection
+    // Line 5  ← locked
+    // Line 6  ← locked
+}
+```
+
+Even if only **one line** needs protection, the **whole method** remains locked.
+
+---
+
+### Block Synchronization
+
+Only the important code is locked.
+
+```java
+public void increment() {
+
+    // Line 1  ← NO lock (runs freely)
+    // Line 2  ← NO lock
+    // Line 3  ← NO lock
+
+    synchronized (this) {
+        count++; // ← ONLY this is locked
+    }
+
+    // Line 5  ← NO lock (runs freely)
+    // Line 6  ← NO lock
+}
+```
+
+Only the `synchronized` block is protected. Everything outside it can execute **concurrently**.
+
+---
+
+## Example 1 — Basic Synchronized Block
+
+```java
+class Counter {
+
+    private int count = 0;
+
+    public void increment() {
+
+        // Only this block is synchronized
+        synchronized (this) {
+
+            count++;
+        }
+    }
+
+    public int getCount() {
+        return count;
+    }
+}
+
+class MyThread extends Thread {
+
+    private Counter counter;
+
+    public MyThread(Counter counter) {
+        this.counter = counter;
+    }
+
+    @Override
+    public void run() {
+
+        // Increment the shared counter 1000 times
+        for (int i = 1; i <= 1000; i++) {
+
+            counter.increment();
+        }
+    }
+}
+
+public class Test {
+
+    public static void main(String[] args)
+            throws InterruptedException {
+
+        Counter counter = new Counter();
+
+        MyThread t1 = new MyThread(counter);
+        MyThread t2 = new MyThread(counter);
+
+        t1.start();
+        t2.start();
+
+        t1.join();
+        t2.join();
+
+        System.out.println(counter.getCount());
+    }
+}
+```
+
+### Output
+
+```text
+2000
+```
+
+Without the `synchronized` block, the output would vary (e.g., 1856, 1943) because `count++` is not atomic.
+
+---
+
+### What Happens Internally?
+
+```text
+Thread-1                              Thread-2
+    │                                     │
+    │ synchronized (this)                 │ synchronized (this)
+    │                                     │
+    ▼                                     ▼
+ Acquires lock ✅                      Sees lock is taken → WAITS
+    │                                     .
+    │ count++ (100 → 101)                 .
+    │                                     .
+    ▼                                     .
+ Releases lock                            .
+    │                                     │
+    │                                     ▼
+    │                                  Acquires lock ✅
+    │                                     │
+    │                                     │ count++ (101 → 102)
+    │                                     │
+    │                                     ▼
+    │                                  Releases lock
+```
+
+Only **one thread enters** the synchronized block at a time → `count` is always correct.
+
+---
+
+## Example 2 — Synchronize Only the Critical Section
+
+```java
+class BankAccount {
+
+    private int balance = 1000;
+
+    public void withdraw(int amount) {
+
+        // Non-critical code — does NOT need synchronization
+        System.out.println(Thread.currentThread().getName()
+                + " requested withdrawal.");
+
+        // Critical section — ONLY this modifies shared data
+        synchronized (this) {
+
+            if (balance >= amount) {
+
+                balance -= amount;
+
+                System.out.println(
+                        Thread.currentThread().getName()
+                                + " withdrew ₹"
+                                + amount);
+            }
+            else {
+
+                System.out.println("Insufficient Balance");
+            }
+        }
+
+        // Non-critical code — does NOT need synchronization
+        System.out.println("Transaction Finished");
+    }
+}
+```
+
+### Why Synchronize Only This Block?
+
+Only these lines modify shared data:
+
+```java
+balance -= amount;
+```
+
+Printing messages does **not** require synchronization.
+
+```text
+public void withdraw(int amount) {
+
+    println("requested withdrawal");     ← NO lock needed (just printing)
+
+    synchronized (this) {                ← LOCK starts here
+        if (balance >= amount) {
+            balance -= amount;           ← Shared data modified
+        }
+    }                                    ← LOCK ends here
+
+    println("Transaction Finished");     ← NO lock needed (just printing)
+}
+```
+
+---
+
+## Why Not Synchronize the Entire Method?
+
+```text
+Method with 100 lines of code:
+
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│   95 lines → thread-safe (just reading / printing)     │
+│    5 lines → modify shared data (critical section)     │
+│                                                         │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│   synchronized METHOD → locks ALL 100 lines            │
+│   Other threads wait for 100 lines to finish ❌        │
+│                                                         │
+│   synchronized BLOCK  → locks ONLY 5 lines             │
+│   Other threads run the other 95 lines freely ✅       │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+> **Interview Point:** Always prefer synchronized blocks over synchronized methods when only a small portion of the method accesses shared data. This reduces the **lock holding time** and improves **concurrency**.
+
+---
+
+# Summary
+
+| Feature | Synchronized Method | Synchronized Block |
+|---------|--------------------|-----------------|
+| **What is locked?** | Entire method | Only the critical section |
+| **Lock object** | `this` (implicit) | Any object (explicit) |
+| **Performance** | ❌ Slower (locks more code) | ✅ Faster (locks less code) |
+| **Flexibility** | Less flexible | More flexible |
+| **When to use?** | When the entire method accesses shared data | When only a few lines access shared data |
+| **Syntax** | `public synchronized void method()` | `synchronized (obj) { ... }` |
 
 ---
