@@ -3145,46 +3145,353 @@ while others may completely ignore it.
 
 ### `join()`
 
-The `join()` method makes one thread wait until another thread finishes.
+## Interview Definition
+
+> **`join()` is a method that makes the currently executing thread wait until the thread on which `join()` is called completes its execution. The waiting thread enters the `WAITING` (or `TIMED_WAITING` if timeout is specified) state.**
+
+---
+
+## What is `join()`?
+
+If a thread wants to **wait for another thread to complete its task**, then we should use the `join()` method.
+
+```text
+join() = Wait until this thread completes
+```
+
+---
+
+## Syntax
 
 ```java
 public final void join() throws InterruptedException
+
+public final synchronized void join(long ms) throws InterruptedException
+
+public final synchronized void join(long ms, int ns) throws InterruptedException
 ```
 
-Example:
+| Variant | Meaning |
+|---------|---------|
+| `join()` | Wait **until** the thread dies |
+| `join(long ms)` | Wait **at most** `ms` milliseconds |
+| `join(long ms, int ns)` | Wait **at most** `ms` milliseconds + `ns` nanoseconds |
+
+---
+
+## How `join()` Works
+
+```text
+Main Thread              Child Thread (t1)
+    │                         │
+    │   t1.start()            │
+    │────────────────────────▶│
+    │                         │ (executing run())
+    │   t1.join()             │
+    │                         │
+    ▼                         │
+ WAITING ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│
+ (blocked)                    │
+    .                         │
+    .                         │ (still running)
+    .                         │
+    .                         ▼
+    .                      TERMINATED
+    │◀─── (notified) ────────┘
+    │
+    ▼
+ RUNNABLE
+ (resumes execution)
+```
+
+---
+
+## Basic Example
 
 ```java
 class MyThread extends Thread {
+
     public void run() {
+
         for (int i = 1; i <= 3; i++) {
-            System.out.println(i);
+            System.out.println("Child : " + i);
         }
     }
 }
 
 public class Main {
+
     public static void main(String[] args) throws InterruptedException {
+
         MyThread t1 = new MyThread();
         t1.start();
 
-        t1.join();
+        t1.join(); // Main thread waits here until t1 finishes
 
         System.out.println("Main thread continues after t1 finishes");
     }
 }
 ```
 
-Simple meaning:
+### Output
 
 ```text
-join() = Wait until this thread completes
+Child : 1
+Child : 2
+Child : 3
+Main thread continues after t1 finishes
 ```
 
-Analogy:
+Without `join()`, the output would be **unpredictable** — `Main thread continues...` could print before, after, or in between the child output.
+
+---
+
+# Important Points about `join()`
+
+## 1. The Calling Thread Waits, NOT the Target Thread
+
+When we write:
+
+```java
+t1.join();
+```
+
+It means:
 
 ```text
-Main thread says: I will wait until Worker-1 completes the job.
+The CURRENTLY EXECUTING thread will wait until t1 completes.
 ```
+
+It does **NOT** mean t1 will wait. It means **whoever called `t1.join()` will wait**.
+
+```text
+t1.join()
+    │
+    ├── WHO waits?    → The thread that executed this line (e.g., Main thread)
+    ├── Waits for?    → t1 to finish
+    └── t1 does what? → Continues running normally
+```
+
+---
+
+## 2. `join()` Puts the Waiting Thread into `WAITING` State
+
+```text
+Main Thread
+    │
+    │ t1.join()
+    ▼
+  WAITING          ← Main thread enters WAITING state
+    │
+    │ t1 completes
+    ▼
+  RUNNABLE         ← Main thread becomes runnable again
+```
+
+If `join(long ms)` is used, the thread enters **`TIMED_WAITING`** instead.
+
+---
+
+## 3. `join()` Throws `InterruptedException`
+
+`join()` throws a **checked exception**, so it must be handled.
+
+```java
+try {
+    t1.join();
+} catch (InterruptedException e) {
+    e.printStackTrace();
+}
+```
+
+or
+
+```java
+public static void main(String[] args) throws InterruptedException
+```
+
+If the waiting thread is **interrupted** while waiting, it throws `InterruptedException`.
+
+---
+
+## 4. `join(long ms)` — Waiting with Timeout
+
+We can specify a **maximum time** to wait.
+
+```java
+t1.join(3000); // Wait at most 3 seconds for t1
+```
+
+```text
+Main Thread
+    │
+    │ t1.join(3000)
+    ▼
+ TIMED_WAITING
+    │
+    ├── If t1 finishes within 3s → Main thread resumes
+    │
+    └── If t1 does NOT finish within 3s → Main thread resumes anyway
+```
+
+Example:
+
+```java
+class MyThread extends Thread {
+
+    public void run() {
+
+        try {
+            for (int i = 1; i <= 5; i++) {
+                System.out.println("Child : " + i);
+                Thread.sleep(2000);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) throws InterruptedException {
+
+        MyThread t1 = new MyThread();
+        t1.start();
+
+        t1.join(5000); // Wait at most 5 seconds
+
+        System.out.println("Main thread resumed");
+    }
+}
+```
+
+### Output
+
+```text
+Child : 1
+Child : 2
+Child : 3
+Main thread resumed
+Child : 4
+Child : 5
+```
+
+Main thread waited only 5 seconds (not for all 10 seconds of t1's execution), then resumed.
+
+---
+
+## 5. Calling `join()` on an Already Dead Thread Has No Effect
+
+If the target thread has already finished execution, `join()` returns **immediately**.
+
+```java
+MyThread t1 = new MyThread();
+t1.start();
+
+Thread.sleep(5000); // Wait long enough for t1 to finish
+
+t1.join(); // t1 already dead → returns immediately, no waiting
+```
+
+---
+
+## 6. `join()` Releases Locks (Unlike `sleep()`)
+
+Internally, `join(long ms)` is implemented using `wait()`, which **releases the lock on the thread object**.
+
+> **Interview Point:** `sleep()` does NOT release locks, but `join()` internally calls `wait()` which releases the lock on the thread object it is called on.
+
+---
+
+## Example: Joining Multiple Threads
+
+```java
+class MyThread extends Thread {
+
+    public void run() {
+
+        for (int i = 1; i <= 3; i++) {
+            System.out.println(getName() + " : " + i);
+        }
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) throws InterruptedException {
+
+        MyThread t1 = new MyThread();
+        MyThread t2 = new MyThread();
+        MyThread t3 = new MyThread();
+
+        t1.setName("Thread-1");
+        t2.setName("Thread-2");
+        t3.setName("Thread-3");
+
+        t1.start();
+        t1.join(); // Main waits for t1
+
+        t2.start();
+        t2.join(); // Main waits for t2
+
+        t3.start();
+        t3.join(); // Main waits for t3
+
+        System.out.println("All threads completed");
+    }
+}
+```
+
+### Output
+
+```text
+Thread-1 : 1
+Thread-1 : 2
+Thread-1 : 3
+Thread-2 : 1
+Thread-2 : 2
+Thread-2 : 3
+Thread-3 : 1
+Thread-3 : 2
+Thread-3 : 3
+All threads completed
+```
+
+```text
+Without join()                     With join()
+┌──────────────────────┐           ┌──────────────────────┐
+│ Threads run in any   │           │ Threads run one      │
+│ order (interleaved)  │           │ after another         │
+│                      │           │                      │
+│ Thread-1 : 1         │           │ Thread-1 : 1         │
+│ Thread-3 : 1         │           │ Thread-1 : 2         │
+│ Thread-2 : 1         │           │ Thread-1 : 3         │
+│ Thread-1 : 2         │           │ Thread-2 : 1         │
+│ Thread-3 : 2         │           │ Thread-2 : 2         │
+│ ...                  │           │ Thread-2 : 3         │
+│ (unpredictable)      │           │ Thread-3 : 1         │
+│                      │           │ ...                  │
+│                      │           │ All threads completed│
+└──────────────────────┘           └──────────────────────┘
+```
+
+> **Interview Point:** Using `join()` after each `start()` forces **sequential execution** of threads. The next thread starts only after the previous one finishes.
+
+---
+
+# Summary
+
+| Feature | Description |
+|---------|-------------|
+| Method Type | Instance method (non-static) |
+| Purpose | Wait for a thread to complete |
+| Thread State (waiting thread) | `WAITING` or `TIMED_WAITING` |
+| Throws Exception | `InterruptedException` |
+| Releases Lock? | Yes (internally uses `wait()`) |
+| Timeout Support | ✅ `join(ms)` and `join(ms, ns)` |
+| If target already dead? | Returns immediately |
+| Who waits? | The thread that calls `t.join()` |
 
 ---
 
