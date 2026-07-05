@@ -1115,6 +1115,21 @@ Task B - Count 3
 
 ## 5. Java Thread Class Methods
 
+### 📑 Section Index
+
+| # | Sub-Section | Methods Covered |
+|---|-------------|-----------------|
+| [5.1](#51-basic-methods) | Basic Methods | [`run()`](#run) · [`start()`](#start) · [`currentThread()`](#currentthread) · [`isAlive()`](#isalive) |
+| [5.2](#52-naming-methods) | Naming Methods | [`getName()`](#getname) · [`setName(String name)`](#setnamestring-name) |
+| [5.3](#53-daemon-thread-and-its-methods) | Daemon Thread and its Methods | [`isDaemon()`](#isdaemon) · [`setDaemon(boolean on)`](#setdaemonboolean-on) |
+| [5.4](#54-priority-based-methods) | Priority-Based Methods | [`getPriority()`](#getpriority) · [`setPriority(int newPriority)`](#setpriorityint-newpriority) |
+| [5.5](#55-methods-that-pause-or-control-thread-execution) | Methods That Pause or Control Thread Execution | [`sleep(long millis)`](#sleeplong-millis) · [`yield()`](#yield) · [`join()`](#join) |
+| [5.5+](#difference-between-sleep-yield-and-join-in-multithreading) | Difference between `sleep()`, `yield()` and `join()` | — |
+| [5.6](#56-interrupting-methods) | Interrupting Methods | [`interrupt()`](#interrupt) · [`isInterrupted()`](#isinterrupted) · [`interrupted()`](#interrupted) |
+| [5.7](#57-deprecated-methods) | Deprecated Methods | `stop()` · `suspend()` · `resume()` · `destroy()` |
+
+---
+
 ### What is `Thread` class?
 
 In Java, the `Thread` class is used to create and manage threads.
