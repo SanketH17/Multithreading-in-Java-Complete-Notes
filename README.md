@@ -3246,9 +3246,9 @@ Without `join()`, the output would be **unpredictable** — `Main thread continu
 
 ---
 
-# Important Points about `join()`
+## Important Points about `join()`
 
-## 1. The Calling Thread Waits, NOT the Target Thread
+### 1. The Calling Thread Waits, NOT the Target Thread
 
 When we write:
 
@@ -3274,7 +3274,7 @@ t1.join()
 
 ---
 
-## 2. `join()` Puts the Waiting Thread into `WAITING` State
+### 2. `join()` Puts the Waiting Thread into `WAITING` State
 
 ```text
 Main Thread
@@ -3292,7 +3292,7 @@ If `join(long ms)` is used, the thread enters **`TIMED_WAITING`** instead.
 
 ---
 
-## 3. `join()` Throws `InterruptedException`
+### 3. `join()` Throws `InterruptedException`
 
 `join()` throws a **checked exception**, so it must be handled.
 
@@ -3314,7 +3314,7 @@ If the waiting thread is **interrupted** while waiting, it throws `InterruptedEx
 
 ---
 
-## 4. `join(long ms)` — Waiting with Timeout
+### 4. `join(long ms)` — Waiting with Timeout
 
 We can specify a **maximum time** to wait.
 
@@ -3366,7 +3366,7 @@ public class Main {
 }
 ```
 
-### Output
+#### Output
 
 ```text
 Child : 1
@@ -3381,7 +3381,7 @@ Main thread waited only 5 seconds (not for all 10 seconds of t1's execution), th
 
 ---
 
-## 5. Calling `join()` on an Already Dead Thread Has No Effect
+### 5. Calling `join()` on an Already Dead Thread Has No Effect
 
 If the target thread has already finished execution, `join()` returns **immediately**.
 
@@ -3396,7 +3396,7 @@ t1.join(); // t1 already dead → returns immediately, no waiting
 
 ---
 
-## 6. `join()` Releases Locks (Unlike `sleep()`)
+### 6. `join()` Releases Locks (Unlike `sleep()`)
 
 Internally, `join(long ms)` is implemented using `wait()`, which **releases the lock on the thread object**.
 
@@ -3404,7 +3404,7 @@ Internally, `join(long ms)` is implemented using `wait()`, which **releases the 
 
 ---
 
-## Example: Joining Multiple Threads
+## Example — Joining Multiple Threads
 
 ```java
 class MyThread extends Thread {
@@ -3480,7 +3480,7 @@ Without join()                     With join()
 
 ---
 
-# Summary
+## Summary
 
 | Feature | Description |
 |---------|-------------|
