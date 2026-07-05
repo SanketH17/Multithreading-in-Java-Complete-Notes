@@ -3551,6 +3551,58 @@ Each step **must finish** before the next one begins — just like a real-world 
 
 ---
 
+---
+
+# Difference between `sleep()`, `yield()` and `join()` in Multithreading
+
+All these 3 methods **stop the thread execution**, but they do it for **different reasons** and in **different ways**.
+
+---
+
+## Comparison Table
+
+| Feature | `sleep()` | `yield()` | `join()` |
+|---------|-----------|-----------|----------|
+| **Purpose** | Thread does not want to perform any operation for a **particular time period** | Stops current executing thread and provides chance to **another thread of same or higher priority** to execute | A thread wants to **wait for another thread** to complete its task |
+| **Method Variants** | `sleep(long ms)` | `yield()` | `join()` |
+| | `sleep(long ms, int ns)` | | `join(long ms)` |
+| | | | `join(long ms, int ns)` |
+| **Is Overloaded?** | ✅ Yes | ❌ No | ✅ Yes |
+| **Throws Exception?** | ✅ Yes (`InterruptedException`) | ❌ No | ✅ Yes (`InterruptedException`) |
+| **Thread Re-invokes When?** | Automatically after the provided time period expires, or if thread is interrupted | Automatically invoked by the Thread Scheduler | Automatically after completion of another thread's task, or after the provided time period expires, or if thread is interrupted |
+| **Real-World Example** | Timer, Blinking cursor | Shopping — billing counter where a person with fewer items is given priority over a person with more items | Driving license process — Medical must finish before Test Drive starts |
+
+---
+
+## How Each Method Stops and Resumes Thread Execution
+
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│                          sleep(ms)                                      │
+│                                                                         │
+│   RUNNING ──▶ TIMED_WAITING ──▶ RUNNABLE                               │
+│                  (waits for specified time)                              │
+│                                                                         │
+│   Resumes: ① Time expires  ② Thread is interrupted                     │
+├──────────────────────────────────────────────────────────────────────────┤
+│                          yield()                                        │
+│                                                                         │
+│   RUNNING ──▶ RUNNABLE                                                  │
+│                  (goes back to ready queue)                              │
+│                                                                         │
+│   Resumes: ① Thread Scheduler picks it again (NOT guaranteed)          │
+├──────────────────────────────────────────────────────────────────────────┤
+│                          join()                                         │
+│                                                                         │
+│   RUNNING ──▶ WAITING / TIMED_WAITING ──▶ RUNNABLE                     │
+│                  (waits for target thread to finish)                     │
+│                                                                         │
+│   Resumes: ① Target thread completes  ② Timeout expires  ③ Interrupted │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## 5.6. Interrupting Methods
 
 Interrupting means requesting a thread to stop waiting, sleeping, or blocking.
