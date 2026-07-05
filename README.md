@@ -9,6 +9,14 @@
 3. [Thread Life Cycle in Java](#3-thread-life-cycle-in-java)
 4. [Different Cases of Executing Threads in Java](#4-different-cases-of-executing-threads-in-java)
 5. [Java Thread Class Methods](#5-java-thread-class-methods)
+   - [5.1 Basic Methods](#51-basic-methods)
+   - [5.2 Naming Methods](#52-naming-methods)
+   - [5.3 Daemon Thread and its Methods](#53-daemon-thread-and-its-methods)
+   - [5.4 Priority-Based Methods](#54-priority-based-methods)
+   - [5.5 Methods That Pause or Control Thread Execution](#55-methods-that-pause-or-control-thread-execution)
+   - [5.5+ Difference between `sleep()`, `yield()` and `join()`](#difference-between-sleep-yield-and-join-in-multithreading)
+   - [5.6 Interrupting Methods](#56-interrupting-methods)
+   - [5.7 Deprecated Methods](#57-deprecated-methods)
 
 ---
 
