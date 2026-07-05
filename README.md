@@ -4250,28 +4250,6 @@ Without Synchronization              With Synchronization
 
 ---
 
-## Types of Synchronization
-
-There are **2 types** of synchronization:
-
-```text
-                    Types of Synchronization
-                             │
-              ┌──────────────┴──────────────┐
-              │                             │
-     Process Synchronization       Thread Synchronization
-     (Not present in Java)                  │
-                                 ┌──────────┴──────────┐
-                                 │                     │
-                          Mutual Exclusive       Cooperation
-                                 │             (Inter-thread
-                                 │              Communication)
-                       ┌─────────┼─────────┐         │
-                       │         │         │    ┌─────┼─────┐
-                  Synchronized  Synchronized  Static  │     │     │
-                    Method      Block    Synchronization  wait() notify() notifyAll()
-```
-
 ### 1. Mutual Exclusive
 
 Only **one thread** can access the shared resource at a time. Other threads must **wait**.
