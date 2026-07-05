@@ -2712,21 +2712,436 @@ Each thread independently sleeps for 2 seconds after its own print. Since all th
 
 ### `yield()`
 
-The `yield()` method gives a hint to the thread scheduler that the current thread is ready to pause and allow another thread to run.
+## Definition
+
+> **`Thread.yield()` is a static method that gives a hint to the Thread Scheduler that the currently executing thread is willing to pause temporarily and allow other runnable threads of the same or higher priority to execute. However, it does not guarantee that another thread will run immediately.**
+
+---
+
+## What is `yield()`?
+
+The `yield()` method is used when the **currently executing thread voluntarily gives up its chance to use the CPU**.
+
+Instead of continuing its execution, it tells the Thread Scheduler:
+
+> **"I'm willing to pause for now. If another thread is ready to run, you may schedule it."**
+
+The scheduler may:
+
+- Switch to another thread.
+- Ignore the request and continue executing the same thread.
+
+---
+
+## Syntax
 
 ```java
 public static native void yield()
 ```
 
-Simple meaning:
+---
+
+## Simple Meaning
 
 ```text
-yield() = I can wait; let another thread run if needed
+yield()
+      ↓
+"I'm willing to wait.
+If another thread is ready,
+let it execute."
 ```
 
-Important point:
+Or,
 
-`yield()` does not guarantee that another thread will definitely run immediately.
+```text
+yield() = Give others a chance to run.
+```
+
+---
+
+## How `yield()` Works
+
+Suppose Thread-1 is currently executing.
+
+```text
+            CPU
+             │
+             ▼
+        Thread-1
+```
+
+When `yield()` is called,
+
+```text
+            CPU
+             │
+             ▼
+        Thread-1
+             │
+        Thread.yield()
+             │
+             ▼
+        RUNNABLE State
+```
+
+Now the Thread Scheduler decides:
+
+### Case 1: Scheduler accepts the request
+
+```text
+CPU
+ │
+ ▼
+Thread-2 starts executing
+```
+
+### Case 2: Scheduler ignores the request
+
+```text
+CPU
+ │
+ ▼
+Thread-1 continues executing
+```
+
+> **Interview Point:** `yield()` is only a **hint** to the Thread Scheduler. The scheduler is free to accept or ignore it.
+
+---
+
+## What Happens Internally?
+
+### Java 5
+
+Internally, `yield()` was implemented using a small sleep (`sleep(0)` or an equivalent operating system call), depending on the JVM and platform.
+
+### Java 6 and Later
+
+`yield()` simply provides a **hint** to the Thread Scheduler.
+
+The scheduler may:
+
+- Accept the request.
+- Ignore the request.
+
+Its behavior depends on the operating system and JVM implementation.
+
+---
+
+# Example 1: Basic `yield()`
+
+```java
+class MyThread extends Thread {
+
+    @Override
+    public void run() {
+
+        for (int i = 1; i <= 5; i++) {
+
+            System.out.println(getName() + " : " + i);
+
+            Thread.yield();
+        }
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) {
+
+        MyThread t1 = new MyThread();
+        MyThread t2 = new MyThread();
+
+        t1.setName("Thread-1");
+        t2.setName("Thread-2");
+
+        t1.start();
+        t2.start();
+    }
+}
+```
+
+### Possible Output 1
+
+```text
+Thread-1 : 1
+Thread-2 : 1
+Thread-1 : 2
+Thread-2 : 2
+Thread-1 : 3
+Thread-2 : 3
+Thread-1 : 4
+Thread-2 : 4
+Thread-1 : 5
+Thread-2 : 5
+```
+
+### Possible Output 2
+
+```text
+Thread-1 : 1
+Thread-1 : 2
+Thread-1 : 3
+Thread-1 : 4
+Thread-1 : 5
+Thread-2 : 1
+Thread-2 : 2
+Thread-2 : 3
+Thread-2 : 4
+Thread-2 : 5
+```
+
+### Observation
+
+Both outputs are correct.
+
+Calling `yield()` **does not guarantee** that another thread will execute.
+
+---
+
+# Example 2: `yield()` in the Main Thread
+
+```java
+class MyThread extends Thread {
+
+    @Override
+    public void run() {
+
+        for (int i = 1; i <= 5; i++) {
+
+            System.out.println("Child Thread");
+        }
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) {
+
+        MyThread t = new MyThread();
+
+        t.start();
+
+        for (int i = 1; i <= 5; i++) {
+
+            System.out.println("Main Thread");
+
+            Thread.yield();
+        }
+    }
+}
+```
+
+### Possible Output
+
+```text
+Main Thread
+Child Thread
+Main Thread
+Child Thread
+Main Thread
+Child Thread
+```
+
+or
+
+```text
+Main Thread
+Main Thread
+Main Thread
+Main Thread
+Main Thread
+
+Child Thread
+Child Thread
+Child Thread
+Child Thread
+Child Thread
+```
+
+### Observation
+
+The scheduler may ignore the `yield()` request.
+
+---
+
+# Example 3: Only One Runnable Thread
+
+```java
+public class Main {
+
+    public static void main(String[] args) {
+
+        for (int i = 1; i <= 5; i++) {
+
+            System.out.println(i);
+
+            Thread.yield();
+        }
+    }
+}
+```
+
+### Output
+
+```text
+1
+2
+3
+4
+5
+```
+
+### Observation
+
+Since no other runnable thread exists,
+
+`yield()` has **no visible effect**.
+
+---
+
+# Example 4: High-Priority Thread Calling `yield()`
+
+```java
+class MyThread extends Thread {
+
+    public MyThread(String name) {
+        super(name);
+    }
+
+    @Override
+    public void run() {
+
+        for (int i = 1; i <= 5; i++) {
+
+            System.out.println(getName());
+
+            Thread.yield();
+        }
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) {
+
+        MyThread high = new MyThread("High Priority");
+        MyThread low = new MyThread("Low Priority");
+
+        high.setPriority(Thread.MAX_PRIORITY);
+        low.setPriority(Thread.MIN_PRIORITY);
+
+        high.start();
+        low.start();
+    }
+}
+```
+
+### Observation
+
+Even after calling `yield()`,
+
+the high-priority thread may continue running.
+
+Again,
+
+**nothing is guaranteed.**
+
+---
+
+# Important Points
+
+## 1. `yield()` is a Static Method
+
+```java
+public static native void yield()
+```
+
+Always call it using the class name:
+
+```java
+Thread.yield();
+```
+
+---
+
+## 2. `yield()` Always Affects the Current Thread
+
+It pauses **only the currently executing thread**.
+
+It does **not** affect any other thread.
+
+---
+
+## 3. `yield()` Moves the Thread Back to the RUNNABLE State
+
+```text
+RUNNING
+    │
+    │ yield()
+    ▼
+RUNNABLE
+```
+
+After entering the RUNNABLE state,
+
+the scheduler decides which thread should execute next.
+
+---
+
+## 4. `yield()` Does NOT Guarantee a Context Switch
+
+The scheduler may:
+
+- Execute another thread.
+- Continue executing the same thread.
+
+Therefore,
+
+```text
+yield()
+```
+
+does **not** guarantee
+
+```text
+Thread-1
+        ↓
+Thread-2
+```
+
+---
+
+## 5. `yield()` Does NOT Release Locks
+
+If a thread owns a synchronized lock,
+
+calling `yield()` does **not** release it.
+
+The thread continues holding the lock until it exits the synchronized block or method.
+
+---
+
+## 6. `yield()` Does NOT Throw Any Checked Exception
+
+Unlike `sleep()`,
+
+`yield()` does **not** throw
+
+```text
+InterruptedException
+```
+
+No `try-catch` or `throws` declaration is required.
+
+---
+
+## 7. `yield()` is Platform Dependent
+
+Different operating systems and JVM implementations handle `yield()` differently.
+
+Some schedulers may honor the request,
+
+while others may completely ignore it.
 
 ---
 
