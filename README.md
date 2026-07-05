@@ -3407,11 +3407,13 @@ Internally, `join(long ms)` is implemented using `wait()`, which **releases the 
 ## Example — Joining Multiple Threads
 
 ```java
+// Step 1 : Medical checkup thread
+// Simulates the medical examination process (takes 3 seconds)
 class Medical extends Thread {
     public void run() {
         try {
             System.out.println("Medical Started...");
-            Thread.sleep(3000);
+            Thread.sleep(3000); // Simulating medical checkup takes 3 seconds
             System.out.println("Medical Closed");
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -3419,11 +3421,13 @@ class Medical extends Thread {
     }
 }
 
+// Step 2 : Driving test thread
+// Simulates the driving test process (takes 5 seconds)
 class TestDriver extends Thread {
     public void run() {
         try {
             System.out.println("Test drive starts");
-            Thread.sleep(5000);
+            Thread.sleep(5000); // Simulating driving test takes 5 seconds
             System.out.println("Test drive completed");
         } catch (InterruptedException e) {
             System.out.println(e);
@@ -3431,11 +3435,13 @@ class TestDriver extends Thread {
     }
 }
 
+// Step 3 : Officer signing thread
+// Simulates the officer signing the file (takes 3 seconds)
 class OfficerSign extends Thread {
     public void run() {
         try {
             System.out.println("Officer takes the file");
-            Thread.sleep(3000);
+            Thread.sleep(3000); // Simulating officer review takes 3 seconds
             System.out.println("Officer work completed");
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -3444,21 +3450,33 @@ class OfficerSign extends Thread {
 }
 
 
+// Main class — Simulates a Driving License Process
+// Steps must happen in ORDER: Medical → Test Drive → Officer Sign
+// join() is used to force the main thread to WAIT for each step to finish
+//        before starting the next one
 public class Test8 {
     public static void main(String[] args) throws InterruptedException {
+
+        // Creating thread objects for each step
         Medical medical = new Medical();
         TestDriver td = new TestDriver();
         OfficerSign sign = new OfficerSign();
 
-        medical.start();
-        medical.join();
+        // Step 1: Start medical checkup and WAIT for it to finish
+        medical.start();  // Medical thread starts running
+        medical.join();   // Main thread WAITS here until medical thread dies
 
-        td.start();
-        td.join();
+        // Step 2: Start driving test and WAIT for it to finish
+        // This will NOT start until medical is completed (because of join() above)
+        td.start();       // TestDriver thread starts running
+        td.join();        // Main thread WAITS here until td thread dies
 
-        sign.start();
-        sign.join();
+        // Step 3: Start officer signing and WAIT for it to finish
+        // This will NOT start until driving test is completed (because of join() above)
+        sign.start();     // OfficerSign thread starts running
+        sign.join();      // Main thread WAITS here until sign thread dies
 
+        // This line executes ONLY after all 3 threads have completed
         System.out.println("All tasks completed...!!!");
     }
 }
