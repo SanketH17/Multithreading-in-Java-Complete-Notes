@@ -17,6 +17,7 @@
    - [5.5+ Difference between `sleep()`, `yield()` and `join()`](#difference-between-sleep-yield-and-join-in-multithreading)
    - [5.6 Interrupting Methods](#56-interrupting-methods)
    - [5.7 Deprecated Methods](#57-deprecated-methods)
+6. [Synchronization in Java Multithreading](#6-synchronization-in-java-multithreading)
 
 ---
 
@@ -4172,50 +4173,324 @@ Use safe approaches like `interrupt()` instead.
 
 ---
 
-### Small Complete Example
 
-```java
-class MyThread extends Thread {
-    public void run() {
-        System.out.println("Running thread: " + Thread.currentThread().getName());
-    }
-}
+## 6. Synchronization in Java Multithreading
 
-public class Main {
-    public static void main(String[] args) throws InterruptedException {
-        MyThread t1 = new MyThread();
+### 🤔 Before We Begin — What Problem Are We Solving?
 
-        t1.setName("Worker-1");
-        t1.setPriority(Thread.MAX_PRIORITY);
+Imagine there is **one ATM machine** in a village and **two people** want to withdraw money at the same time.
 
-        System.out.println("Before start: " + t1.isAlive());
-
-        t1.start();
-        t1.join();
-
-        System.out.println("After finish: " + t1.isAlive());
-    }
-}
-```
-
-Possible output:
+If both enter the ATM together and try to withdraw from the **same account** at the same time — the balance will get **corrupted**.
 
 ```text
-Before start: false
-Running thread: Worker-1
-After finish: false
+Account Balance = ₹10,000
+
+Person-1 reads balance  → ₹10,000
+Person-2 reads balance  → ₹10,000   (before Person-1's transaction is done)
+
+Person-1 withdraws ₹5,000  → Updates balance to ₹5,000
+Person-2 withdraws ₹5,000  → Updates balance to ₹5,000  (should be ₹0)
+
+Final Balance = ₹5,000  ❌ (should be ₹0)
+```
+
+This is called a **Race Condition** — when multiple threads access shared data at the same time and produce incorrect results.
+
+> **Synchronization solves this problem by allowing only ONE thread to access shared data at a time.**
+
+---
+
+## What is Synchronization?
+
+Synchronization is a mechanism that ensures **only one thread** can access a shared resource at a time.
+
+When one thread is using the shared resource, all other threads must **wait** until the first thread finishes.
+
+```text
+Synchronization = One thread at a time
+```
+
+Or,
+
+```text
+Synchronization = Lock the door while you are inside.
+                  Others wait outside until you come out.
 ```
 
 ---
 
-### 💡 One-Line Definition
+## Why is Synchronization Needed?
 
-The `Thread` class provides methods to create, start, pause, name, prioritize, join, interrupt, and check the status of threads.
+Without synchronization, when multiple threads access **shared data** at the same time:
 
-In simple words:
+- Data can become **inconsistent** (corrupted values)
+- Results become **unpredictable** (different output every run)
+- Program behavior becomes **unreliable**
 
 ```text
-Thread methods help us control workers inside a Java program.
+Without Synchronization              With Synchronization
+┌──────────────────────┐             ┌──────────────────────┐
+│ Thread-1 and Thread-2│             │ Thread-1 goes first  │
+│ access data at the   │             │ (Thread-2 waits)     │
+│ SAME TIME            │             │                      │
+│                      │             │ Thread-1 finishes    │
+│ Data gets CORRUPTED  │             │                      │
+│ ❌                   │             │ Thread-2 goes next   │
+│                      │             │                      │
+│ Output: unpredictable│             │ Data stays CORRECT   │
+│                      │             │ ✅                   │
+└──────────────────────┘             └──────────────────────┘
 ```
+
+---
+
+## How to Achieve Synchronization
+
+![How to achieve Synchronization](how%20to%20achieve%20synchronization.png)
+
+---
+
+## Types of Synchronization
+
+There are **2 types** of synchronization:
+
+```text
+                    Types of Synchronization
+                             │
+              ┌──────────────┴──────────────┐
+              │                             │
+     Process Synchronization       Thread Synchronization
+     (Not present in Java)                  │
+                                 ┌──────────┴──────────┐
+                                 │                     │
+                          Mutual Exclusive       Cooperation
+                                 │             (Inter-thread
+                                 │              Communication)
+                       ┌─────────┼─────────┐         │
+                       │         │         │    ┌─────┼─────┐
+                  Synchronized  Synchronized  Static  │     │     │
+                    Method      Block    Synchronization  wait() notify() notifyAll()
+```
+
+### 1. Mutual Exclusive
+
+Only **one thread** can access the shared resource at a time. Other threads must **wait**.
+
+Can be achieved by **3 ways**:
+
+| # | Way | Meaning |
+|---|-----|---------|
+| 1 | **Synchronized Method** | Entire method is locked — only one thread can execute it at a time |
+| 2 | **Synchronized Block** | Only a specific block of code is locked — more flexible than method |
+| 3 | **Static Synchronization** | Lock is on the **class** level, not the object level |
+
+### 2. Cooperation (Inter-Thread Communication)
+
+Threads **communicate** with each other — one thread tells another thread to wake up or wait.
+
+Achieved by methods of the **Object class**:
+
+| # | Method | Meaning |
+|---|--------|---------|
+| 1 | `wait()` | Current thread releases the lock and **waits** until another thread notifies |
+| 2 | `notify()` | Wakes up **one** waiting thread |
+| 3 | `notifyAll()` | Wakes up **all** waiting threads |
+
+> 📝 **Note:** Mutual Exclusive and Cooperation will be covered in detail in upcoming sections.
+
+---
+
+## Simple Example — Problem WITHOUT Synchronization
+
+Two threads are trying to **add to the same counter** at the same time.
+
+```java
+class Counter {
+
+    int count = 0;
+
+    public void increment() {
+        count++; // Not thread-safe
+    }
+}
+
+class MyThread extends Thread {
+
+    Counter counter;
+
+    MyThread(Counter counter) {
+        this.counter = counter;
+    }
+
+    public void run() {
+        for (int i = 0; i < 1000; i++) {
+            counter.increment();
+        }
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) throws InterruptedException {
+
+        Counter counter = new Counter(); // Shared object
+
+        MyThread t1 = new MyThread(counter);
+        MyThread t2 = new MyThread(counter);
+
+        t1.start();
+        t2.start();
+
+        t1.join();
+        t2.join();
+
+        System.out.println("Final Count : " + counter.count);
+    }
+}
+```
+
+### Expected Output
+
+```text
+Final Count : 2000
+```
+
+### Actual Output (varies every run)
+
+```text
+Final Count : 1856
+Final Count : 1943
+Final Count : 1781
+```
+
+### Why?
+
+Because `count++` is **NOT an atomic operation**. Internally, it does 3 things:
+
+```text
+1. READ   → Read current value of count
+2. UPDATE → Add 1 to it
+3. WRITE  → Write the new value back
+```
+
+When two threads do this at the **same time**, some updates get **lost**:
+
+```text
+Thread-1: READ count = 5
+Thread-2: READ count = 5      ← reads BEFORE Thread-1 writes
+Thread-1: WRITE count = 6
+Thread-2: WRITE count = 6     ← overwrites Thread-1's update!
+
+Result: count = 6 instead of 7  ❌
+```
+
+---
+
+## Solution — WITH Synchronization
+
+Just add the `synchronized` keyword to the method:
+
+```java
+class Counter {
+
+    int count = 0;
+
+    public synchronized void increment() { // Only ONE thread can enter at a time
+        count++;
+    }
+}
+
+class MyThread extends Thread {
+
+    Counter counter;
+
+    MyThread(Counter counter) {
+        this.counter = counter;
+    }
+
+    public void run() {
+        for (int i = 0; i < 1000; i++) {
+            counter.increment();
+        }
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) throws InterruptedException {
+
+        Counter counter = new Counter(); // Shared object
+
+        MyThread t1 = new MyThread(counter);
+        MyThread t2 = new MyThread(counter);
+
+        t1.start();
+        t2.start();
+
+        t1.join();
+        t2.join();
+
+        System.out.println("Final Count : " + counter.count);
+    }
+}
+```
+
+### Output (always correct)
+
+```text
+Final Count : 2000
+```
+
+### What Changed?
+
+```text
+Before: public void increment()              → Both threads enter at same time ❌
+After:  public synchronized void increment() → Only ONE thread enters at a time ✅
+```
+
+```text
+┌────────────────────────────────────────────────────┐
+│               synchronized method                  │
+│                                                    │
+│   Thread-1 enters → LOCKS the method              │
+│   Thread-2 arrives → sees LOCK → WAITS            │
+│                                                    │
+│   Thread-1 finishes → UNLOCKS the method          │
+│   Thread-2 enters → LOCKS the method              │
+│   Thread-2 finishes → UNLOCKS                     │
+│                                                    │
+│   Result: count = 2000 ✅ (always correct)        │
+└────────────────────────────────────────────────────┘
+```
+
+---
+
+## Key Terms to Know
+
+| Term | Simple Meaning |
+|------|----------------|
+| **Synchronization** | Only one thread can access shared data at a time |
+| **Race Condition** | Bug caused when multiple threads access shared data simultaneously |
+| **Thread-Safe** | Code that works correctly even when multiple threads use it |
+| **Lock / Monitor** | A mechanism that allows only one thread to enter a synchronized block |
+| **`synchronized`** | Java keyword used to make a method or block thread-safe |
+
+---
+
+## Summary
+
+| Point | Description |
+|-------|-------------|
+| What? | Mechanism to allow **only one thread** to access shared data at a time |
+| Why? | To prevent **race conditions** and **data corruption** |
+| How? | Using the `synchronized` keyword on methods or blocks |
+| Without it? | Multiple threads access shared data simultaneously → **incorrect results** |
+| With it? | Threads take turns → **correct results every time** |
+
+> **Interview Point:** Synchronization ensures **thread safety** by allowing only one thread to access a critical section at a time. It prevents race conditions but can reduce performance because threads have to wait for their turn.
+
+---
+
+> 📝 **Note:** This is an introduction to Synchronization. Detailed topics like **synchronized blocks, static synchronization, inter-thread communication (`wait()`, `notify()`, `notifyAll()`), and deadlock** will be covered in upcoming sections.
 
 ---
