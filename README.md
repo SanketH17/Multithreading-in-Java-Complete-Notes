@@ -18,7 +18,8 @@
    - [5.6 Interrupting Methods](#56-interrupting-methods)
    - [5.7 Deprecated Methods](#57-deprecated-methods)
 6. [Synchronization in Java Multithreading](#6-synchronization-in-java-multithreading)
-   - [6.1 Synchronized Block](#61-synchronized-block)
+   - [6.1 Synchronized Method](#61-synchronized-method)
+   - [6.2 Synchronized Block](#62-synchronized-block)
 
 ---
 
@@ -4279,7 +4280,21 @@ Achieved by methods of the **Object class**:
 
 ---
 
-## Example — Problem WITHOUT Synchronization
+## 6.1. Synchronized Method
+
+When the `synchronized` keyword is applied to an **entire method**, the thread acquires the lock of the object **before entering the method** and releases it **after the method completes**.
+
+```java
+public synchronized void methodName() {
+
+    // Entire method is locked
+    // Only ONE thread can execute this method at a time
+}
+```
+
+---
+
+## Example — Problem WITHOUT Synchronized Method
 
 Two customers (**Rahul** and **Amit**) are trying to **withdraw from the same bank account** at the same time.
 
@@ -4486,7 +4501,7 @@ Account Balance = ₹1000
 
 ---
 
-## 6.1. Synchronized Block
+## 6.2. Synchronized Block
 
 ### Interview Definition
 
