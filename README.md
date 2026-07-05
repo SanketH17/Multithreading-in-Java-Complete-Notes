@@ -3628,85 +3628,442 @@ All these 3 methods **stop the thread execution**, but they do it for **differen
 
 ## 5.6. Interrupting Methods
 
-Interrupting means requesting a thread to stop waiting, sleeping, or blocking.
+Interrupt means **requesting a thread to stop** what it is doing (waiting, sleeping, or blocking).
 
-Important:
-
-`interrupt()` does not forcefully kill a thread. It sends a request/signal to interrupt the thread.
+> **Important:** `interrupt()` does **NOT** forcefully kill a thread. It only sends a **signal/request** to the thread.
 
 ---
 
 ### `interrupt()`
 
-The `interrupt()` method interrupts a thread.
+## Interview Definition
+
+> **`interrupt()` is used to interrupt an executing thread. It sets the interrupt flag of the thread to `true`. If the thread is in sleeping or waiting state (`sleep()`, `wait()`, `join()`), it immediately throws `InterruptedException`.**
+
+---
+
+## Syntax
 
 ```java
 public void interrupt()
 ```
 
-Example:
+---
+
+## When Does `interrupt()` Work?
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│                                                                    │
+│   Case 1: Thread is in sleeping / waiting state                   │
+│   ─────────────────────────────────────────────                   │
+│   Thread is in → sleep() / wait() / join()                        │
+│                     │                                              │
+│                     │ interrupt() called                           │
+│                     ▼                                              │
+│              InterruptedException is thrown                        │
+│              Thread wakes up immediately                           │
+│                                                                    │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│   Case 2: Thread is NOT in sleeping / waiting state               │
+│   ─────────────────────────────────────────────────               │
+│   Thread is running normally                                       │
+│                     │                                              │
+│                     │ interrupt() called                           │
+│                     ▼                                              │
+│              No exception is thrown                                │
+│              Interrupt flag is set to true                         │
+│              Thread continues normal execution                     │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Example 1 — Thread is in Sleeping State
 
 ```java
 class MyThread extends Thread {
+
     public void run() {
+
         try {
-            Thread.sleep(5000);
+            System.out.println("Thread going to sleep...");
+            Thread.sleep(5000); // Thread is sleeping
         } catch (InterruptedException e) {
-            System.out.println("Thread was interrupted");
+            System.out.println("Thread was interrupted while sleeping");
         }
     }
 }
 
 public class Main {
+
     public static void main(String[] args) {
+
         MyThread t1 = new MyThread();
-        t1.start();
-        t1.interrupt();
+        t1.start();    // Thread starts and goes to sleep
+        t1.interrupt(); // Main thread interrupts t1 while it is sleeping
     }
 }
 ```
 
-Simple meaning:
+### Output
 
 ```text
-interrupt() = Send interruption request to thread
+Thread going to sleep...
+Thread was interrupted while sleeping
 ```
+
+Thread was sleeping → `interrupt()` was called → `InterruptedException` was thrown → Thread woke up immediately.
+
+---
+
+## Example 2 — Thread is NOT in Sleeping State
+
+```java
+class MyThread extends Thread {
+
+    public void run() {
+
+        for (int i = 1; i <= 3; i++) {
+            System.out.println("Running : " + i);
+        }
+        System.out.println("Interrupt flag : " + Thread.currentThread().isInterrupted());
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) {
+
+        MyThread t1 = new MyThread();
+        t1.start();
+        t1.interrupt(); // Thread is NOT sleeping, so no exception
+    }
+}
+```
+
+### Output
+
+```text
+Running : 1
+Running : 2
+Running : 3
+Interrupt flag : true
+```
+
+Thread was **not** in sleeping/waiting state → No exception was thrown → Thread continued normally → But the **interrupt flag was set to `true`**.
 
 ---
 
 ### `isInterrupted()`
 
-The `isInterrupted()` method checks whether a specific thread has been interrupted.
+## Interview Definition
+
+> **`isInterrupted()` is an instance method that checks whether a specific thread has been interrupted. It returns `true` if the thread's interrupt flag is set, and `false` otherwise. It does NOT clear the interrupt flag.**
+
+---
+
+## Syntax
 
 ```java
 public boolean isInterrupted()
 ```
 
-Simple meaning:
+---
+
+## Key Points
+
+- It is a **non-static** (instance) method.
+- It checks the interrupt flag of the **specific thread object** on which it is called.
+- It **does NOT clear** the interrupt flag after checking.
+
+---
+
+## Example
+
+```java
+class MyThread extends Thread {
+
+    public void run() {
+
+        for (int i = 1; i <= 3; i++) {
+            System.out.println("Running : " + i);
+        }
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) {
+
+        MyThread t1 = new MyThread();
+        t1.start();
+        t1.interrupt();
+
+        // Checking interrupt status of t1
+        System.out.println("Is t1 interrupted? : " + t1.isInterrupted()); // true
+        System.out.println("Still interrupted? : " + t1.isInterrupted()); // true (flag NOT cleared)
+    }
+}
+```
+
+### Output
 
 ```text
-isInterrupted() = Has this thread received an interrupt request?
+Is t1 interrupted? : true
+Still interrupted? : true
+Running : 1
+Running : 2
+Running : 3
 ```
+
+Called `isInterrupted()` twice → Both times `true` → Because **it does NOT clear the flag**.
 
 ---
 
 ### `interrupted()`
 
-The `interrupted()` method checks whether the current thread has been interrupted.
+## Interview Definition
+
+> **`interrupted()` is a static method that checks whether the current thread has been interrupted. It returns `true` if the interrupt flag is set, and then immediately clears the flag back to `false`.**
+
+---
+
+## Syntax
 
 ```java
 public static boolean interrupted()
 ```
 
-Important point:
+---
 
-`interrupted()` checks the current thread and clears the interrupted status after checking.
+## Key Points
 
-Simple meaning:
+- It is a **static** method.
+- It checks the interrupt flag of the **currently executing thread** (not a specific thread object).
+- It **clears the interrupt flag** after checking (resets it to `false`).
+
+---
+
+## Example
+
+```java
+class MyThread extends Thread {
+
+    public void run() {
+
+        Thread.currentThread().interrupt(); // Set interrupt flag to true
+
+        System.out.println("First check  : " + Thread.interrupted()); // true (then clears flag)
+        System.out.println("Second check : " + Thread.interrupted()); // false (flag already cleared)
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) {
+
+        MyThread t1 = new MyThread();
+        t1.start();
+    }
+}
+```
+
+### Output
 
 ```text
-interrupted() = Is current thread interrupted? Then clear the interrupt flag.
+First check  : true
+Second check : false
 ```
+
+First call returned `true` and **cleared the flag** → Second call returned `false` because the flag was already cleared.
+
+---
+
+## Difference between `isInterrupted()` and `interrupted()`
+
+| Feature | `isInterrupted()` | `interrupted()` |
+|---------|--------------------|-----------------|
+| **Method Type** | Instance method (non-static) | Static method |
+| **Checks Which Thread?** | The specific thread object it is called on | The currently executing thread |
+| **Clears Interrupt Flag?** | ❌ No | ✅ Yes |
+| **Calling Style** | `t1.isInterrupted()` | `Thread.interrupted()` |
+| **Can Call Multiple Times?** | Yes — returns same result | Second call returns `false` (flag cleared) |
+
+```text
+isInterrupted()                     interrupted()
+┌─────────────────────────┐         ┌─────────────────────────┐
+│ Checks specific thread  │         │ Checks current thread   │
+│                         │         │                         │
+│ Flag = true             │         │ Flag = true             │
+│ Returns: true           │         │ Returns: true           │
+│ Flag after: true ✅     │         │ Flag after: false ❌    │
+│ (flag NOT cleared)      │         │ (flag CLEARED)          │
+│                         │         │                         │
+│ Call again → true       │         │ Call again → false      │
+└─────────────────────────┘         └─────────────────────────┘
+```
+
+---
+
+## Practical Example — `interrupted()` vs `isInterrupted()` with `sleep()`
+
+This example shows the **real impact** of clearing the interrupt flag.
+
+### Case 1 — Using only `isInterrupted()` (flag NOT cleared)
+
+```java
+public class Test5 extends Thread {
+
+    public void run() {
+
+        // Thread.interrupted() is NOT called → flag stays true
+        System.out.println(Thread.currentThread().isInterrupted()); // true (flag NOT cleared)
+
+        try {
+            for (int i = 1; i <= 3; i++) {
+                System.out.println(i);
+                Thread.sleep(1000); // sleep() sees interrupt flag → throws exception
+            }
+        } catch (Exception e) {
+            System.out.println("Thread interrupted : " + e);
+        }
+
+    }
+
+    public static void main(String[] args) {
+
+        Test5 t = new Test5();
+        t.start();
+        t.interrupt(); // Sets interrupt flag to true
+    }
+}
+```
+
+#### Output
+
+```text
+true
+1
+Thread interrupted : java.lang.InterruptedException: sleep interrupted
+```
+
+#### What Happened?
+
+```text
+t.interrupt()
+    │
+    ▼
+Interrupt flag = true
+    │
+    ▼
+isInterrupted() → returns true (does NOT clear flag)
+    │
+    ▼
+Flag is still true
+    │
+    ▼
+Thread.sleep(1000) → sees flag is true → throws InterruptedException
+    │
+    ▼
+Thread stops after printing only 1
+```
+
+---
+
+### Case 2 — Using `interrupted()` before `isInterrupted()` (flag CLEARED)
+
+```java
+public class Test5 extends Thread {
+
+    public void run() {
+
+        System.out.println(Thread.interrupted()); // true (flag CLEARED after this)
+        System.out.println(Thread.currentThread().isInterrupted()); // false (flag already cleared)
+
+        try {
+            for (int i = 1; i <= 3; i++) {
+                System.out.println(i);
+                Thread.sleep(1000); // sleep() sees flag is false → works normally
+            }
+        } catch (Exception e) {
+            System.out.println("Thread interrupted : " + e);
+        }
+
+    }
+
+    public static void main(String[] args) {
+
+        Test5 t = new Test5();
+        t.start();
+        t.interrupt(); // Sets interrupt flag to true
+    }
+}
+```
+
+#### Output
+
+```text
+true
+false
+1
+2
+3
+```
+
+#### What Happened?
+
+```text
+t.interrupt()
+    │
+    ▼
+Interrupt flag = true
+    │
+    ▼
+Thread.interrupted() → returns true → CLEARS flag to false
+    │
+    ▼
+isInterrupted() → returns false (flag was already cleared)
+    │
+    ▼
+Flag is false
+    │
+    ▼
+Thread.sleep(1000) → sees flag is false → works normally
+    │
+    ▼
+Thread runs completely (prints 1, 2, 3)
+```
+
+---
+
+### Key Takeaway
+
+```text
+┌───────────────────────────────────────────────────────────────────┐
+│                                                                   │
+│   interrupted()  called first → Flag CLEARED → sleep() works     │
+│                                                 normally          │
+│                                                                   │
+│   isInterrupted() called first → Flag NOT cleared → sleep()      │
+│                                   throws InterruptedException    │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+> **Interview Point:** `Thread.interrupted()` clears the flag, so calling it **before** `sleep()` prevents the exception. `isInterrupted()` does NOT clear the flag, so `sleep()` still sees it and throws `InterruptedException`.
+
+---
+
+# Summary
+
+| Method | Type | Checks Which Thread? | Clears Flag? | Throws Exception? |
+|--------|------|----------------------|--------------|-------------------|
+| `interrupt()` | Instance | Target thread | — | Causes `InterruptedException` if thread is sleeping/waiting |
+| `isInterrupted()` | Instance | Specific thread object | ❌ No | No |
+| `interrupted()` | Static | Currently executing thread | ✅ Yes | No |
 
 ---
 
