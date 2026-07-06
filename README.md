@@ -20,6 +20,7 @@
 6. [Synchronization in Java Multithreading](#6-synchronization-in-java-multithreading)
    - [6.1 Synchronized Method](#61-synchronized-method)
    - [6.2 Synchronized Block](#62-synchronized-block)
+   - [6.3 Static Synchronization](#63-static-synchronization)
 
 ---
 
@@ -4497,7 +4498,7 @@ Account Balance = ₹1000
 
 ---
 
-> 📝 **Note:** This is an introduction to Synchronization. Detailed topics like **static synchronization, inter-thread communication (`wait()`, `notify()`, `notifyAll()`), and deadlock** will be covered in upcoming sections.
+> 📝 **Note:** This is an introduction to Synchronization. Detailed topics like **inter-thread communication (`wait()`, `notify()`, `notifyAll()`), and deadlock** will be covered in upcoming sections.
 
 ---
 
@@ -4817,5 +4818,297 @@ Method with 100 lines of code:
 | **Flexibility** | Less flexible | More flexible |
 | **When to use?** | When the entire method accesses shared data | When only a few lines access shared data |
 | **Syntax** | `public synchronized void method()` | `synchronized (obj) { ... }` |
+
+---
+
+
+## 6.3. Static Synchronization
+
+### Interview Definition
+
+> **Static synchronization means applying the `synchronized` keyword to a static method. In this case, the lock is acquired on the Class object (`ClassName.class`) instead of the instance object (`this`). This ensures that only one thread across ALL objects of that class can execute the static synchronized method at a time.**
+
+---
+
+## 🤔 What Problem Does Static Synchronization Solve?
+
+In **instance-level synchronization** (`synchronized` on a non-static method), the lock is on the **object**.
+
+If there are **multiple objects**, each object has its **own lock**.
+
+This means threads using **different objects** can enter the synchronized method **at the same time** — which defeats the purpose.
+
+```text
+┌─────────────────────────────────────────────────┐
+│         Instance-Level Synchronization            │
+│                                                   │
+│   Object b1         Object b2                     │
+│   ┌───────────┐     ┌───────────┐                 │
+│   │  Lock L1  │     │  Lock L2  │                 │
+│   └───────────┘     └───────────┘                 │
+│       ↑                   ↑                       │
+│    t1, t2              t3, t4                     │
+│                                                   │
+│   t1 & t3 can enter at the SAME TIME ❌           │
+│   (different objects → different locks)            │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## Example — Problem with Instance-Level Synchronization
+
+```java
+class Display {
+
+    // Lock is on the OBJECT, not the class
+    public synchronized void show(String name) {
+
+        for (int i = 1; i <= 3; i++) {
+            System.out.println(name + " : " + i);
+
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+class MyThread extends Thread {
+
+    Display display;
+    String name;
+
+    MyThread(Display display, String name) {
+        this.display = display;
+        this.name = name;
+    }
+
+    public void run() {
+        display.show(name);
+    }
+}
+
+public class Test {
+
+    public static void main(String[] args) {
+
+        // TWO different objects
+        Display d1 = new Display();
+        Display d2 = new Display();
+
+        MyThread t1 = new MyThread(d1, "Rahul");  // uses d1
+        MyThread t2 = new MyThread(d1, "Amit");   // uses d1
+        MyThread t3 = new MyThread(d2, "Priya");  // uses d2
+        MyThread t4 = new MyThread(d2, "Neha");   // uses d2
+
+        t1.start();
+        t2.start();
+        t3.start();
+        t4.start();
+    }
+}
+```
+
+### Output (instance-level sync — interleaved across objects)
+
+```text
+Rahul : 1
+Priya : 1
+Rahul : 2
+Priya : 2
+Rahul : 3
+Priya : 3
+Amit : 1
+Neha : 1
+Amit : 2
+Neha : 2
+Amit : 3
+Neha : 3
+```
+
+### Why?
+
+```text
+d1 has Lock L1 → Rahul and Amit share this lock (one at a time) ✅
+d2 has Lock L2 → Priya and Neha share this lock (one at a time) ✅
+
+But Rahul (d1) and Priya (d2) have DIFFERENT locks
+→ Both enter synchronized method at the SAME TIME ❌
+```
+
+Threads using **different objects** are **not blocked** by each other because each object has its **own lock**.
+
+---
+
+## What is Static Synchronization?
+
+Static synchronization applies the `synchronized` keyword to a **static method**.
+
+The lock is acquired on the **Class object** (`ClassName.class`) instead of the instance object (`this`).
+
+Since there is only **one Class object** per class in JVM, **all threads across all objects** must wait for the same lock.
+
+```text
+Instance Sync:  Lock is on → Object (this)
+Static Sync:    Lock is on → Class  (ClassName.class)
+```
+
+---
+
+## How Static Synchronization Works
+
+```text
+┌─────────────────────────────────────────────────┐
+│           Static Synchronization                  │
+│                                                   │
+│   Object b1         Object b2                     │
+│   ┌───────────┐     ┌───────────┐                 │
+│   │  Lock L1  │     │  Lock L2  │                 │
+│   └───────────┘     └───────────┘                 │
+│                                                   │
+│          ┌───────────────────┐                    │
+│          │   Class Lock     │                    │
+│          │  (Display.class) │                    │
+│          └─────────┬─────────┘                    │
+│                  │                                │
+│       ┌─────┬────┼────┬─────┐                    │
+│       │     │     │    │     │                    │
+│      t1    t2    t3   t4                          │
+│                                                   │
+│   ALL threads compete for the SAME class lock     │
+│   Only ONE thread can enter at a time ✅           │
+└─────────────────────────────────────────────────┘
+```
+
+Even though there are **two objects** (b1, b2) with their **own instance locks** (L1, L2), the static synchronized method uses the **Class-level lock**.
+
+All 4 threads (t1, t2, t3, t4) must **compete for the same Class lock** — so only **one thread** executes at a time, regardless of which object it belongs to.
+
+---
+
+## Syntax
+
+```java
+public static synchronized void methodName() {
+
+    // Lock is on ClassName.class
+    // Only ONE thread across ALL objects can enter
+}
+```
+
+Or using a synchronized block with the class lock:
+
+```java
+public static void methodName() {
+
+    synchronized (ClassName.class) {
+
+        // Lock is on the Class object
+    }
+}
+```
+
+---
+
+## Solution — Using Static Synchronization
+
+```java
+class Display {
+
+    // Lock is on the CLASS, not the object
+    public static synchronized void show(String name) {
+
+        for (int i = 1; i <= 3; i++) {
+            System.out.println(name + " : " + i);
+
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+class MyThread extends Thread {
+
+    Display display;
+    String name;
+
+    MyThread(Display display, String name) {
+        this.display = display;
+        this.name = name;
+    }
+
+    public void run() {
+        display.show(name);
+    }
+}
+
+public class Test {
+
+    public static void main(String[] args) {
+
+        // TWO different objects
+        Display d1 = new Display();
+        Display d2 = new Display();
+
+        MyThread t1 = new MyThread(d1, "Rahul");  // uses d1
+        MyThread t2 = new MyThread(d1, "Amit");   // uses d1
+        MyThread t3 = new MyThread(d2, "Priya");  // uses d2
+        MyThread t4 = new MyThread(d2, "Neha");   // uses d2
+
+        t1.start();
+        t2.start();
+        t3.start();
+        t4.start();
+    }
+}
+```
+
+### Output (static sync — strictly one at a time)
+
+```text
+Rahul : 1
+Rahul : 2
+Rahul : 3
+Amit : 1
+Amit : 2
+Amit : 3
+Priya : 1
+Priya : 2
+Priya : 3
+Neha : 1
+Neha : 2
+Neha : 3
+```
+
+All 4 threads execute **one after another** — even though they use **different objects**.
+
+### What Changed?
+
+```text
+Before: public synchronized void show(...)        → Lock on object  → Different objects = different locks ❌
+After:  public static synchronized void show(...) → Lock on class   → ALL objects share ONE lock ✅
+```
+
+```text
+Instance Sync                        Static Sync
+┌──────────────────────┐           ┌──────────────────────┐
+│ obj1 → Lock L1       │           │                      │
+│ obj2 → Lock L2       │           │ Class → Lock L       │
+│                      │           │                      │
+│ t1(obj1) runs        │           │ t1 runs              │
+│ t3(obj2) runs        │           │ t2 waits             │
+│ (SAME TIME) ❌       │           │ t3 waits             │
+│                      │           │ t4 waits             │
+│                      │           │ (ONE AT A TIME) ✅   │
+└──────────────────────┘           └──────────────────────┘
+```
+
+> **Interview Point:** Use **instance synchronization** when each object has its own data. Use **static synchronization** when the data is shared across all objects (like static variables). Static sync locks the `Class` object, so only one thread across all instances can enter at a time.
 
 ---
